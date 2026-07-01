@@ -1,0 +1,6 @@
+*.pk3
+*.wad
+*.log
+*.malo
+Reports/*.txt
+Reports/*.json
