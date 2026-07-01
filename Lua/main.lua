@@ -209,3 +209,107 @@ COM_AddCommand("fonoia", function(player)
     mostrarReporteIA(player)
 end)
 
+
+-- ================================
+-- Banco de palabras Sonic FonoKids
+-- ================================
+
+local bancoPalabras = {
+    mano = {
+        texto = "mano",
+        silaba = "MA",
+        correcto = true,
+        tipo = "objetivo"
+    },
+
+    mapa = {
+        texto = "mapa",
+        silaba = "MA",
+        correcto = true,
+        tipo = "objetivo"
+    },
+
+    mama = {
+        texto = "mama",
+        silaba = "MA",
+        correcto = true,
+        tipo = "objetivo"
+    },
+
+    masa = {
+        texto = "masa",
+        silaba = "MA",
+        correcto = true,
+        tipo = "objetivo"
+    },
+
+    pato = {
+        texto = "pato",
+        silaba = "PA",
+        correcto = false,
+        tipo = "distractor_fonologico"
+    },
+
+    bala = {
+        texto = "bala",
+        silaba = "BA",
+        correcto = false,
+        tipo = "distractor_fonologico"
+    },
+
+    luna = {
+        texto = "luna",
+        silaba = "LU",
+        correcto = false,
+        tipo = "distractor_no_fonologico"
+    },
+
+    sopa = {
+        texto = "sopa",
+        silaba = "SO",
+        correcto = false,
+        tipo = "distractor_no_fonologico"
+    }
+}
+
+local function limpiarPalabra(palabra)
+    if palabra == nil then
+        return nil
+    end
+
+    return string.lower(palabra)
+end
+
+COM_AddCommand("fonopalabra", function(player, palabra)
+    local clave = limpiarPalabra(palabra)
+
+    if clave == nil or clave == "" then
+        CONS_Printf(player, "Uso: fonopalabra <palabra>")
+        CONS_Printf(player, "Ejemplo: fonopalabra mano")
+        return
+    end
+
+    local dato = bancoPalabras[clave]
+
+    if dato == nil then
+        CONS_Printf(player, "La palabra '" .. clave .. "' no esta registrada en el banco.")
+        CONS_Printf(player, "Usa fonolista para ver palabras disponibles.")
+        return
+    end
+
+    if dato.correcto == true then
+        registrarCorrecto(player, dato.texto)
+    else
+        registrarError(player, dato.texto, dato.tipo)
+    end
+end)
+
+COM_AddCommand("fonolista", function(player)
+    CONS_Printf(player, "===== BANCO DE PALABRAS =====")
+    CONS_Printf(player, "Objetivo actual: silaba inicial " .. tostring(objetivoActual))
+    CONS_Printf(player, "Correctas: mano, mapa, mama, masa")
+    CONS_Printf(player, "Distractores fonologicos: pato, bala")
+    CONS_Printf(player, "Distractores no fonologicos: luna, sopa")
+    CONS_Printf(player, "=============================")
+end)
+
