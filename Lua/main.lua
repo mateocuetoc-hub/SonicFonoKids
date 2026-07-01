@@ -167,3 +167,45 @@ COM_AddCommand("fonoreset", function(player)
     player.fono_lastRings = player.rings
     CONS_Printf(player, "Sesion reiniciada.")
 end)
+
+local function mostrarReporteIA(player)
+    CONS_Printf(player, "========== DATOS PARA IA ==========")
+    CONS_Printf(player, "Proyecto: Sonic FonoKids")
+    CONS_Printf(player, "Tipo de reporte: descriptivo_no_clinico")
+    CONS_Printf(player, "Jugador anonimo: " .. tostring(sesion.jugador))
+    CONS_Printf(player, "Nivel: " .. tostring(sesion.nivel))
+    CONS_Printf(player, "Actividad: " .. tostring(sesion.actividad))
+    CONS_Printf(player, "Objetivo trabajado: silaba inicial " .. tostring(sesion.objetivo))
+    CONS_Printf(player, "Intentos totales: " .. tostring(sesion.intentos))
+    CONS_Printf(player, "Respuestas correctas: " .. tostring(sesion.correctos))
+    CONS_Printf(player, "Errores: " .. tostring(sesion.errores))
+    CONS_Printf(player, "Ayudas usadas: " .. tostring(sesion.ayudas))
+    CONS_Printf(player, "Tiempo total aproximado: " .. tostring(tiempoTranscurrido()) .. " segundos")
+    CONS_Printf(player, "Nivel completado: " .. tostring(sesion.completado))
+
+    if sesion.intentos > 0 then
+        local porcentaje = (sesion.correctos * 100) / sesion.intentos
+        CONS_Printf(player, "Porcentaje de logro: " .. tostring(porcentaje) .. "%")
+    else
+        CONS_Printf(player, "Porcentaje de logro: 0%")
+    end
+
+    if #sesion.errores_detalle > 0 then
+        CONS_Printf(player, "Detalle de errores:")
+        for i = 1, #sesion.errores_detalle do
+            local e = sesion.errores_detalle[i]
+            CONS_Printf(player, tostring(i) .. ") palabra: " .. tostring(e.palabra) .. " | tipo: " .. tostring(e.tipo))
+        end
+    else
+        CONS_Printf(player, "Detalle de errores: sin errores registrados")
+    end
+
+    CONS_Printf(player, "Advertencia: estos datos no constituyen diagnostico.")
+    CONS_Printf(player, "Interpretacion: debe realizarla una persona del area fonoaudiologica.")
+    CONS_Printf(player, "==================================")
+end
+
+COM_AddCommand("fonoia", function(player)
+    mostrarReporteIA(player)
+end)
+
