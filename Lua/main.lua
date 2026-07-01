@@ -313,3 +313,62 @@ COM_AddCommand("fonolista", function(player)
     CONS_Printf(player, "=============================")
 end)
 
+
+-- ================================
+-- Reporte descriptivo presentable
+-- ================================
+
+local function obtenerPorcentajeLogro()
+    if sesion.intentos == nil or sesion.intentos == 0 then
+        return 0
+    end
+
+    return (sesion.correctos * 100) / sesion.intentos
+end
+
+local function obtenerNivelDescriptivo(porcentaje)
+    if porcentaje >= 80 then
+        return "desempeno alto dentro de la actividad"
+    elseif porcentaje >= 50 then
+        return "desempeno intermedio dentro de la actividad"
+    else
+        return "desempeno bajo dentro de la actividad"
+    end
+end
+
+local function mostrarReporteDescriptivo(player)
+    local porcentaje = obtenerPorcentajeLogro()
+    local nivel = obtenerNivelDescriptivo(porcentaje)
+
+    CONS_Printf(player, "========== SONIC FONOKIDS ==========")
+    CONS_Printf(player, "REPORTE DESCRIPTIVO NO CLINICO")
+    CONS_Printf(player, "Sesion: " .. tostring(sesion.jugador))
+    CONS_Printf(player, "Actividad: silaba inicial " .. tostring(sesion.objetivo))
+    CONS_Printf(player, "Intentos: " .. tostring(sesion.intentos))
+    CONS_Printf(player, "Correctos: " .. tostring(sesion.correctos))
+    CONS_Printf(player, "Errores: " .. tostring(sesion.errores))
+    CONS_Printf(player, "Ayudas usadas: " .. tostring(sesion.ayudas))
+    CONS_Printf(player, "Logro: " .. tostring(porcentaje) .. "%")
+    CONS_Printf(player, "Resultado descriptivo: " .. nivel)
+
+    if sesion.errores > 0 then
+        CONS_Printf(player, "Errores observados:")
+        for i = 1, #sesion.errores_detalle do
+            local e = sesion.errores_detalle[i]
+            CONS_Printf(player, "- " .. tostring(e.palabra) .. " / " .. tostring(e.tipo))
+        end
+    else
+        CONS_Printf(player, "Errores observados: no se registraron errores.")
+    end
+
+    CONS_Printf(player, "Observacion:")
+    CONS_Printf(player, "Estos datos describen el rendimiento dentro del juego.")
+    CONS_Printf(player, "No constituyen diagnostico fonoaudiologico.")
+    CONS_Printf(player, "La interpretacion debe realizarla una persona del area.")
+    CONS_Printf(player, "====================================")
+end
+
+COM_AddCommand("fonoreporte", function(player)
+    mostrarReporteDescriptivo(player)
+end)
+
