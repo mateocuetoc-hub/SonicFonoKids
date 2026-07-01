@@ -372,3 +372,108 @@ COM_AddCommand("fonoreporte", function(player)
     mostrarReporteDescriptivo(player)
 end)
 
+
+-- ================================
+-- Modo Quiz: silaba inicial MA
+-- ================================
+
+local quizFono = {
+    activo = false,
+    indice = 1,
+    preguntas = {
+        "mano",
+        "pato",
+        "mapa",
+        "bala",
+        "mama",
+        "luna"
+    }
+}
+
+local function mostrarPreguntaQuiz(player)
+    if quizFono.activo == false then
+        CONS_Printf(player, "No hay quiz activo. Usa fonoquiz para comenzar.")
+        return
+    end
+
+    if quizFono.indice > #quizFono.preguntas then
+        quizFono.activo = false
+        sesion.completado = true
+        CONS_Printf(player, "Quiz completado.")
+        CONS_Printf(player, "Usa fonoreporte o fonoia para ver resultados.")
+        return
+    end
+
+    local palabra = quizFono.preguntas[quizFono.indice]
+
+    CONS_Printf(player, "========== PREGUNTA FONOKIDS ==========")
+    CONS_Printf(player, "Pregunta " .. tostring(quizFono.indice) .. " de " .. tostring(#quizFono.preguntas))
+    CONS_Printf(player, "La palabra '" .. palabra .. "' comienza con " .. tostring(objetivoActual) .. "?")
+    CONS_Printf(player, "Responde con: fonoquizsi o fonoquizno")
+    CONS_Printf(player, "=======================================")
+end
+
+local function responderQuiz(player, respuestaSi)
+    if quizFono.activo == false then
+        CONS_Printf(player, "No hay quiz activo. Usa fonoquiz para comenzar.")
+        return
+    end
+
+    local palabra = quizFono.preguntas[quizFono.indice]
+    local dato = bancoPalabras[palabra]
+
+    if dato == nil then
+        CONS_Printf(player, "Error: palabra no registrada en banco.")
+        return
+    end
+
+    local respuestaCorrecta = false
+
+    if respuestaSi == true and dato.correcto == true then
+        respuestaCorrecta = true
+    elseif respuestaSi == false and dato.correcto == false then
+        respuestaCorrecta = true
+    end
+
+    if respuestaCorrecta == true then
+        registrarCorrecto(player, dato.texto)
+        CONS_Printf(player, "Respuesta correcta.")
+    else
+        local tipoError = dato.tipo
+
+        if dato.correcto == true then
+            tipoError = "rechazo_palabra_objetivo"
+        else
+            tipoError = "falso_positivo_" .. tostring(dato.tipo)
+        end
+
+        registrarError(player, dato.texto, tipoError)
+        CONS_Printf(player, "Respuesta incorrecta.")
+    end
+
+    quizFono.indice = quizFono.indice + 1
+    mostrarPreguntaQuiz(player)
+end
+
+COM_AddCommand("fonoquiz", function(player)
+    iniciarSesion()
+    quizFono.activo = true
+    quizFono.indice = 1
+
+    CONS_Printf(player, "Modo quiz iniciado.")
+    CONS_Printf(player, "Objetivo: identificar si la palabra comienza con " .. tostring(objetivoActual))
+    mostrarPreguntaQuiz(player)
+end)
+
+COM_AddCommand("fonoquizsi", function(player)
+    responderQuiz(player, true)
+end)
+
+COM_AddCommand("fonoquizno", function(player)
+    responderQuiz(player, false)
+end)
+
+COM_AddCommand("fonoquizpregunta", function(player)
+    mostrarPreguntaQuiz(player)
+end)
+
