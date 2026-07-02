@@ -477,3 +477,43 @@ COM_AddCommand("fonoquizpregunta", function(player)
     mostrarPreguntaQuiz(player)
 end)
 
+
+-- ================================
+-- Inicio rapido Sonic FonoKids
+-- ================================
+
+local function mostrarInstruccionesFonoKids(player)
+    CONS_Printf(player, "========== SONIC FONOKIDS ==========")
+    CONS_Printf(player, "Actividad: conciencia fonologica")
+    CONS_Printf(player, "Objetivo: identificar palabras que comienzan con MA")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "Comandos principales:")
+    CONS_Printf(player, "fonokids       -> inicia la actividad")
+    CONS_Printf(player, "fonoquiz       -> inicia el quiz")
+    CONS_Printf(player, "fonoquizsi     -> responder SI")
+    CONS_Printf(player, "fonoquizno     -> responder NO")
+    CONS_Printf(player, "fonoreporte    -> ver reporte descriptivo")
+    CONS_Printf(player, "fonoia         -> ver datos para IA")
+    CONS_Printf(player, "fonolista      -> ver banco de palabras")
+    CONS_Printf(player, "fonoreset      -> reiniciar sesion")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "Este juego no diagnostica.")
+    CONS_Printf(player, "Los datos deben ser interpretados por una persona del area fonoaudiologica.")
+    CONS_Printf(player, "====================================")
+end
+
+COM_AddCommand("fonoayuda2", function(player)
+    mostrarInstruccionesFonoKids(player)
+end)
+
+COM_AddCommand("fonokids", function(player)
+    mostrarInstruccionesFonoKids(player)
+    iniciarSesion()
+    quizFono.activo = true
+    quizFono.indice = 1
+
+    CONS_Printf(player, "Sesion iniciada.")
+    CONS_Printf(player, "Comenzando quiz...")
+    mostrarPreguntaQuiz(player)
+end)
+
