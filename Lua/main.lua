@@ -113,6 +113,10 @@ addHook("PlayerSpawn", function(player)
     CONS_Printf(player, "====================================")
 end)
 
+-- Modo antiguo de anillos desactivado.
+-- Ahora las respuestas se registran con objetos educativos y comandos.
+local contarAnillosComoCorrectos = false
+
 addHook("ThinkFrame", function()
     for player in players.iterate do
         if player.mo then
@@ -120,7 +124,7 @@ addHook("ThinkFrame", function()
                 player.fono_lastRings = player.rings
             end
 
-            if player.rings > player.fono_lastRings then
+            if contarAnillosComoCorrectos == true and player.rings > player.fono_lastRings then
                 local ganados = player.rings - player.fono_lastRings
 
                 for i = 1, ganados do
@@ -515,5 +519,116 @@ COM_AddCommand("fonokids", function(player)
     CONS_Printf(player, "Sesion iniciada.")
     CONS_Printf(player, "Comenzando quiz...")
     mostrarPreguntaQuiz(player)
+end)
+
+
+-- ================================
+-- Objetos educativos tocables
+-- ================================
+
+freeslot("MT_FONO_OBJETO")
+
+mobjinfo[MT_FONO_OBJETO] = {
+    spawnstate = mobjinfo[MT_RING].spawnstate,
+    radius = 16*FRACUNIT,
+    height = 32*FRACUNIT,
+    flags = MF_SPECIAL|MF_NOGRAVITY
+}
+
+local objetosFono = {}
+
+local function crearObjetoFono(player, palabra, indice)
+    if player == nil or player.mo == nil then
+        CONS_Printf(player, "No se pudo crear el objeto: jugador no valido.")
+        return
+    end
+
+    local clave = limpiarPalabra(palabra)
+
+    if clave == nil or clave == "" then
+        clave = "mano"
+    end
+
+    if bancoPalabras[clave] == nil then
+        CONS_Printf(player, "La palabra '" .. clave .. "' no existe en el banco.")
+        CONS_Printf(player, "Usa fonolista para ver palabras disponibles.")
+        return
+    end
+
+    if indice == nil then
+        indice = 0
+    end
+
+    local distancia = (96 + indice * 80) * FRACUNIT
+    local x = player.mo.x + distancia
+    local y = player.mo.y
+    local z = player.mo.z + 32*FRACUNIT
+
+    local objeto = P_SpawnMobj(x, y, z, MT_FONO_OBJETO)
+
+    if objeto == nil then
+        CONS_Printf(player, "No se pudo crear el objeto educativo.")
+        return
+    end
+
+    objeto.fono_palabra = clave
+    objeto.fuse = TICRATE * 60
+    objetosFono[objeto] = clave
+
+    CONS_Printf(player, "Objeto educativo creado: " .. clave)
+end
+
+local function procesarObjetoFono(special, toucher)
+    if toucher == nil or toucher.player == nil then
+        return true
+    end
+
+    local player = toucher.player
+    local palabra = special.fono_palabra
+
+    if palabra == nil then
+        palabra = objetosFono[special]
+    end
+
+    if palabra == nil then
+        return true
+    end
+
+    local dato = bancoPalabras[palabra]
+
+    if dato == nil then
+        CONS_Printf(player, "Objeto con palabra no registrada: " .. tostring(palabra))
+        return true
+    end
+
+    if dato.correcto == true then
+        registrarCorrecto(player, dato.texto)
+        CONS_Printf(player, "Tocaste objeto correcto: " .. dato.texto)
+    else
+        registrarError(player, dato.texto, dato.tipo)
+        CONS_Printf(player, "Tocaste distractor: " .. dato.texto)
+    end
+
+    objetosFono[special] = nil
+
+    if special.valid then
+        P_RemoveMobj(special)
+    end
+
+    return true
+end
+
+addHook("TouchSpecial", procesarObjetoFono, MT_FONO_OBJETO)
+
+COM_AddCommand("fonoobj", function(player, palabra)
+    crearObjetoFono(player, palabra, 0)
+end)
+
+COM_AddCommand("fonoobjetosdemo", function(player)
+    crearObjetoFono(player, "mano", 0)
+    crearObjetoFono(player, "mapa", 1)
+    crearObjetoFono(player, "pato", 2)
+    crearObjetoFono(player, "bala", 3)
+    CONS_Printf(player, "Demo creada: mano, mapa, pato, bala.")
 end)
 
