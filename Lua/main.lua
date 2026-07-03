@@ -44,7 +44,7 @@ local function registrarCorrecto(player, palabra)
 
     if sesion.correctos >= 5 then
         sesion.completado = true
-        CONS_Printf(player, "Actividad completada. Escribe fonostatus para ver el reporte.")
+        CONS_Printf(player, "Actividad completada. Escribe fonoreporte para ver el reporte.")
     end
 end
 
@@ -108,8 +108,8 @@ addHook("PlayerSpawn", function(player)
 
     CONS_Printf(player, "====================================")
     CONS_Printf(player, "Sonic FonoKids activo")
-    CONS_Printf(player, "Objetivo: junta 5 palabras con " .. sesion.objetivo)
-    CONS_Printf(player, "Por ahora, cada anillo cuenta como palabra correcta.")
+    CONS_Printf(player, "Objetivo: trabajar silaba inicial " .. sesion.objetivo)
+    CONS_Printf(player, "Usa fononivel1auto para iniciar la actividad educativa.")
     CONS_Printf(player, "====================================")
 end)
 
