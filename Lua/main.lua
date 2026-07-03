@@ -1117,3 +1117,64 @@ COM_AddCommand("fononiveles", function(player)
     CONS_Printf(player, "======================================")
 end)
 
+
+-- ================================
+-- Datos estructurados para IA
+-- ================================
+
+local function fonoPorcentajeSeguro()
+    if sesion == nil or sesion.intentos == nil or sesion.intentos == 0 then
+        return 0
+    end
+
+    return (sesion.correctos * 100) / sesion.intentos
+end
+
+local function fonoMostrarJSON(player)
+    local porcentaje = fonoPorcentajeSeguro()
+
+    CONS_Printf(player, "========== COPIAR DESDE AQUI ==========")
+    CONS_Printf(player, "{")
+    CONS_Printf(player, '  "proyecto": "Sonic FonoKids",')
+    CONS_Printf(player, '  "tipo_reporte": "descriptivo_no_clinico",')
+    CONS_Printf(player, '  "jugador_anonimo": "' .. tostring(sesion.jugador) .. '",')
+    CONS_Printf(player, '  "actividad": "' .. tostring(sesion.actividad) .. '",')
+    CONS_Printf(player, '  "objetivo": "' .. tostring(sesion.objetivo) .. '",')
+    CONS_Printf(player, '  "nivel": "' .. tostring(sesion.nivel) .. '",')
+    CONS_Printf(player, '  "intentos_totales": ' .. tostring(sesion.intentos) .. ',')
+    CONS_Printf(player, '  "respuestas_correctas": ' .. tostring(sesion.correctos) .. ',')
+    CONS_Printf(player, '  "errores": ' .. tostring(sesion.errores) .. ',')
+    CONS_Printf(player, '  "ayudas_usadas": ' .. tostring(sesion.ayudas) .. ',')
+    CONS_Printf(player, '  "porcentaje_logro": ' .. tostring(porcentaje) .. ',')
+    CONS_Printf(player, '  "completado": "' .. tostring(sesion.completado) .. '",')
+    CONS_Printf(player, '  "advertencia": "Este reporte no constituye diagnostico fonoaudiologico.",')
+    CONS_Printf(player, '  "errores_detalle": [')
+
+    if sesion.errores_detalle ~= nil and #sesion.errores_detalle > 0 then
+        for i = 1, #sesion.errores_detalle do
+            local e = sesion.errores_detalle[i]
+            local coma = ","
+
+            if i == #sesion.errores_detalle then
+                coma = ""
+            end
+
+            CONS_Printf(player, '    { "palabra": "' .. tostring(e.palabra) .. '", "tipo": "' .. tostring(e.tipo) .. '" }' .. coma)
+        end
+    end
+
+    CONS_Printf(player, "  ]")
+    CONS_Printf(player, "}")
+    CONS_Printf(player, "========== COPIAR HASTA AQUI ==========")
+end
+
+COM_AddCommand("fonojson", function(player)
+    fonoMostrarJSON(player)
+end)
+
+COM_AddCommand("fonocopia", function(player)
+    CONS_Printf(player, "Usa el comando fonojson y copia el bloque entre:")
+    CONS_Printf(player, "COPIAR DESDE AQUI / COPIAR HASTA AQUI")
+    CONS_Printf(player, "Luego pegalo en la IA junto al prompt de Reports/prompt_reporte_ia.md")
+end)
+
