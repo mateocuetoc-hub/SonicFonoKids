@@ -826,3 +826,78 @@ COM_AddCommand("fononivel1seq", function(player)
     crearSiguienteObjetoSecuencial(player)
 end)
 
+
+-- ================================
+-- HUD VISUAL FONOKIDS
+-- ================================
+
+local function fonoSetHud(player, linea1, linea2, tiempo)
+    if player == nil then
+        return
+    end
+
+    player.fono_hud_linea1 = tostring(linea1 or "")
+    player.fono_hud_linea2 = tostring(linea2 or "")
+    player.fono_hud_timer = tiempo or TICRATE * 5
+end
+
+local crearObjetoFonoHudBase = crearObjetoFono
+
+crearObjetoFono = function(player, palabra, indice)
+    local textoPalabra = string.upper(tostring(palabra or ""))
+    local textoObjetivo = "OBJETIVO: " .. tostring(objetivoActual)
+
+    fonoSetHud(player, "OBJETO: " .. textoPalabra, textoObjetivo, TICRATE * 8)
+
+    return crearObjetoFonoHudBase(player, palabra, indice)
+end
+
+addHook("ThinkFrame", function()
+    for player in players.iterate do
+        if player.fono_hud_timer ~= nil and player.fono_hud_timer > 0 then
+            player.fono_hud_timer = player.fono_hud_timer - 1
+        end
+    end
+end)
+
+addHook("HUD", function(v, player)
+    if player == nil then
+        return
+    end
+
+    local hudX = 180
+    local hudY = 8
+
+    v.drawString(hudX, hudY, "SONIC FONOKIDS")
+
+    local intentos = 0
+    local correctos = 0
+    local errores = 0
+    local total = 0
+
+    if sesion ~= nil then
+        intentos = sesion.intentos or 0
+        correctos = sesion.correctos or 0
+        errores = sesion.errores or 0
+        total = sesion.total_esperado or 0
+    end
+
+    v.drawString(hudX, hudY + 10, "OK: " .. tostring(correctos) .. "  ERR: " .. tostring(errores))
+    v.drawString(hudX, hudY + 20, "INT: " .. tostring(intentos) .. "/" .. tostring(total))
+
+    if player.fono_hud_timer ~= nil and player.fono_hud_timer > 0 then
+        if player.fono_hud_linea1 ~= nil then
+            v.drawString(hudX, hudY + 36, player.fono_hud_linea1)
+        end
+
+        if player.fono_hud_linea2 ~= nil then
+            v.drawString(hudX, hudY + 46, player.fono_hud_linea2)
+        end
+    end
+end, "game")
+
+COM_AddCommand("fonohudtest", function(player)
+    fonoSetHud(player, "OBJETO: MANO", "OBJETIVO: MA", TICRATE * 6)
+    CONS_Printf(player, "HUD FonoKids probado.")
+end)
+
