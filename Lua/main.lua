@@ -984,3 +984,136 @@ registrarError = function(player, palabra, tipo)
     end
 end
 
+
+-- ================================
+-- Niveles por silaba: MA / PA / BA
+-- ================================
+
+-- Ampliacion del banco de palabras
+bancoPalabras["pala"] = {
+    texto = "pala",
+    silaba = "PA",
+    correcto = false,
+    tipo = "distractor_fonologico"
+}
+
+bancoPalabras["papa"] = {
+    texto = "papa",
+    silaba = "PA",
+    correcto = false,
+    tipo = "distractor_fonologico"
+}
+
+bancoPalabras["barco"] = {
+    texto = "barco",
+    silaba = "BA",
+    correcto = false,
+    tipo = "distractor_fonologico"
+}
+
+bancoPalabras["banco"] = {
+    texto = "banco",
+    silaba = "BA",
+    correcto = false,
+    tipo = "distractor_fonologico"
+}
+
+bancoPalabras["banana"] = {
+    texto = "banana",
+    silaba = "BA",
+    correcto = false,
+    tipo = "distractor_fonologico"
+}
+
+local function fonoEsSilabaCercana(silaba)
+    if silaba == "MA" then
+        return true
+    elseif silaba == "PA" then
+        return true
+    elseif silaba == "BA" then
+        return true
+    end
+
+    return false
+end
+
+local function fonoConfigurarBancoPorSilaba(silabaObjetivo)
+    objetivoActual = silabaObjetivo
+
+    for clave, dato in pairs(bancoPalabras) do
+        if dato.silaba == silabaObjetivo then
+            dato.correcto = true
+            dato.tipo = "objetivo"
+        else
+            dato.correcto = false
+
+            if fonoEsSilabaCercana(dato.silaba) == true then
+                dato.tipo = "distractor_fonologico"
+            else
+                dato.tipo = "distractor_no_fonologico"
+            end
+        end
+    end
+end
+
+local function fonoIniciarNivelSilaba(player, silabaObjetivo, palabrasNivel, nombreNivel)
+    fonoConfigurarBancoPorSilaba(silabaObjetivo)
+    iniciarSesion()
+
+    sesion.objetivo = silabaObjetivo
+    sesion.actividad = "conciencia_fonologica_silaba_inicial_" .. silabaObjetivo
+    sesion.total_esperado = #palabrasNivel
+    sesion.reporte_auto_mostrado = false
+
+    nivelSecuencial.activo = true
+    nivelSecuencial.indice = 1
+    nivelSecuencial.palabras = palabrasNivel
+
+    CONS_Printf(player, "========== SONIC FONOKIDS ==========")
+    CONS_Printf(player, nombreNivel)
+    CONS_Printf(player, "Objetivo: identificar palabras con silaba inicial " .. silabaObjetivo)
+    CONS_Printf(player, "Aparecera un objeto a la vez.")
+    CONS_Printf(player, "Toca el objeto para registrar la respuesta.")
+    CONS_Printf(player, "El reporte aparecera automaticamente al finalizar.")
+    CONS_Printf(player, "====================================")
+
+    crearSiguienteObjetoSecuencial(player)
+end
+
+COM_AddCommand("fonoma", function(player)
+    fonoIniciarNivelSilaba(player, "MA", {
+        "mano",
+        "mapa",
+        "pato",
+        "bala"
+    }, "NIVEL MA: Bosque de la silaba MA")
+end)
+
+COM_AddCommand("fonopa", function(player)
+    fonoIniciarNivelSilaba(player, "PA", {
+        "pato",
+        "pala",
+        "mano",
+        "bala"
+    }, "NIVEL PA: Camino de la silaba PA")
+end)
+
+COM_AddCommand("fonoba", function(player)
+    fonoIniciarNivelSilaba(player, "BA", {
+        "bala",
+        "barco",
+        "pato",
+        "mano"
+    }, "NIVEL BA: Puente de la silaba BA")
+end)
+
+COM_AddCommand("fononiveles", function(player)
+    CONS_Printf(player, "========== NIVELES FONOKIDS ==========")
+    CONS_Printf(player, "fonoma -> actividad con silaba MA")
+    CONS_Printf(player, "fonopa -> actividad con silaba PA")
+    CONS_Printf(player, "fonoba -> actividad con silaba BA")
+    CONS_Printf(player, "fononivel1seq -> nivel secuencial original MA")
+    CONS_Printf(player, "fononivel1auto -> nivel automatico original MA")
+    CONS_Printf(player, "======================================")
+end)
+
