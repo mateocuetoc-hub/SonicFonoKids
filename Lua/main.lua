@@ -61,7 +61,7 @@ local function registrarError(player, palabra, tipo)
         tipo = tipo
     })
 
-    CONS_Printf(player, "Intentalo otra vez. Busca palabras con " .. sesion.objetivo)
+    CONS_Printf(player, "Buen intento. Busquemos palabras con " .. sesion.objetivo)
 end
 
 local function registrarAyuda(player)
@@ -603,10 +603,10 @@ local function procesarObjetoFono(special, toucher)
 
     if dato.correcto == true then
         registrarCorrecto(player, dato.texto)
-        CONS_Printf(player, "Tocaste objeto correcto: " .. dato.texto)
+        CONS_Printf(player, "Encontraste una palabra objetivo: " .. string.upper(dato.texto))
     else
         registrarError(player, dato.texto, dato.tipo)
-        CONS_Printf(player, "Tocaste distractor: " .. dato.texto)
+        CONS_Printf(player, "Esta palabra no era de la familia " .. tostring(objetivoActual) .. ": " .. string.upper(dato.texto))
     end
 
     objetosFono[special] = nil
@@ -781,7 +781,7 @@ local function crearSiguienteObjetoSecuencial(player)
         CONS_Printf(player, "Esta palabra NO comienza con " .. tostring(objetivoActual) .. ".")
     end
 
-    CONS_Printf(player, "Toca el objeto para registrar la respuesta.")
+    CONS_Printf(player, "Toca el objeto para responder.")
     CONS_Printf(player, "=====================================")
 
     crearObjetoFono(player, palabra, 0)
@@ -900,4 +900,87 @@ COM_AddCommand("fonohudtest", function(player)
     fonoSetHud(player, "OBJETO: MANO", "OBJETIVO: MA", TICRATE * 6)
     CONS_Printf(player, "HUD FonoKids probado.")
 end)
+
+
+-- ================================
+-- Feedback infantil FonoKids
+-- ================================
+
+local function fonoTextoPalabra(palabra)
+    return string.upper(tostring(palabra or ""))
+end
+
+local function fonoMostrarFeedbackCorrecto(player, palabra)
+    local p = fonoTextoPalabra(palabra)
+    local objetivo = tostring(sesion.objetivo or objetivoActual)
+
+    CONS_Printf(player, "¡Muy bien! " .. p .. " empieza con " .. objetivo .. ".")
+    CONS_Printf(player, "¡Sigue asi!")
+
+    if fonoSetHud ~= nil then
+        fonoSetHud(player, "MUY BIEN: " .. p, "EMPIEZA CON " .. objetivo, TICRATE * 4)
+    end
+end
+
+local function fonoMostrarFeedbackError(player, palabra)
+    local p = fonoTextoPalabra(palabra)
+    local objetivo = tostring(sesion.objetivo or objetivoActual)
+
+    CONS_Printf(player, "Buen intento. " .. p .. " no empieza con " .. objetivo .. ".")
+    CONS_Printf(player, "Busquemos una palabra que suene con " .. objetivo .. ".")
+
+    if fonoSetHud ~= nil then
+        fonoSetHud(player, "BUEN INTENTO: " .. p, "NO EMPIEZA CON " .. objetivo, TICRATE * 4)
+    end
+end
+
+registrarCorrecto = function(player, palabra)
+    if sesion.completado == true then
+        return
+    end
+
+    sesion.intentos = (sesion.intentos or 0) + 1
+    sesion.correctos = (sesion.correctos or 0) + 1
+
+    fonoMostrarFeedbackCorrecto(player, palabra)
+
+    if sesion.total_esperado == nil and sesion.correctos >= 5 then
+        sesion.completado = true
+        CONS_Printf(player, "Actividad completada. Escribe fonoreporte para ver el reporte.")
+    end
+
+    if revisarCierreActividad ~= nil then
+        revisarCierreActividad(player)
+    end
+
+    if nivelSecuencial ~= nil and nivelSecuencial.activo == true and sesion.completado ~= true then
+        nivelSecuencial.indice = nivelSecuencial.indice + 1
+        crearSiguienteObjetoSecuencial(player)
+    end
+end
+
+registrarError = function(player, palabra, tipo)
+    if sesion.completado == true then
+        return
+    end
+
+    sesion.intentos = (sesion.intentos or 0) + 1
+    sesion.errores = (sesion.errores or 0) + 1
+
+    table.insert(sesion.errores_detalle, {
+        palabra = palabra,
+        tipo = tipo
+    })
+
+    fonoMostrarFeedbackError(player, palabra)
+
+    if revisarCierreActividad ~= nil then
+        revisarCierreActividad(player)
+    end
+
+    if nivelSecuencial ~= nil and nivelSecuencial.activo == true and sesion.completado ~= true then
+        nivelSecuencial.indice = nivelSecuencial.indice + 1
+        crearSiguienteObjetoSecuencial(player)
+    end
+end
 
