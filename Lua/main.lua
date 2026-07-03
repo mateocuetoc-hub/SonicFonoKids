@@ -662,3 +662,83 @@ COM_AddCommand("fononivel1", function(player)
     crearObjetoFono(player, "bala", 3)
 end)
 
+
+-- ================================
+-- Nivel 1 automatico con cierre de actividad
+-- ================================
+
+local function revisarCierreActividad(player)
+    if sesion.total_esperado == nil then
+        return
+    end
+
+    if sesion.reporte_auto_mostrado == true then
+        return
+    end
+
+    if sesion.intentos >= sesion.total_esperado then
+        sesion.completado = true
+        sesion.reporte_auto_mostrado = true
+
+        CONS_Printf(player, "Actividad finalizada automaticamente.")
+        CONS_Printf(player, "Mostrando reporte descriptivo...")
+
+        mostrarReporteDescriptivo(player)
+    end
+end
+
+local registrarCorrectoBase = registrarCorrecto
+registrarCorrecto = function(player, palabra)
+    registrarCorrectoBase(player, palabra)
+    revisarCierreActividad(player)
+end
+
+local registrarErrorBase = registrarError
+registrarError = function(player, palabra, tipo)
+    registrarErrorBase(player, palabra, tipo)
+    revisarCierreActividad(player)
+end
+
+COM_AddCommand("fononivel1auto", function(player)
+    iniciarSesion()
+
+    sesion.total_esperado = 4
+    sesion.reporte_auto_mostrado = false
+
+    CONS_Printf(player, "========== SONIC FONOKIDS ==========")
+    CONS_Printf(player, "NIVEL 1 AUTO: Bosque de la silaba MA")
+    CONS_Printf(player, "Objetivo: toca las palabras que comienzan con MA.")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "Palabras objetivo:")
+    CONS_Printf(player, "- mano")
+    CONS_Printf(player, "- mapa")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "Distractores:")
+    CONS_Printf(player, "- pato")
+    CONS_Printf(player, "- bala")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "El reporte aparecera automaticamente al tocar los 4 objetos.")
+    CONS_Printf(player, "====================================")
+
+    crearObjetoFono(player, "mano", 0)
+    crearObjetoFono(player, "mapa", 1)
+    crearObjetoFono(player, "pato", 2)
+    crearObjetoFono(player, "bala", 3)
+end)
+
+COM_AddCommand("fonoprogreso", function(player)
+    CONS_Printf(player, "========== PROGRESO FONOKIDS ==========")
+    CONS_Printf(player, "Intentos: " .. tostring(sesion.intentos))
+    CONS_Printf(player, "Correctos: " .. tostring(sesion.correctos))
+    CONS_Printf(player, "Errores: " .. tostring(sesion.errores))
+
+    if sesion.total_esperado ~= nil then
+        CONS_Printf(player, "Total esperado: " .. tostring(sesion.total_esperado))
+    else
+        CONS_Printf(player, "Total esperado: no definido")
+    end
+
+    CONS_Printf(player, "Completado: " .. tostring(sesion.completado))
+    CONS_Printf(player, "=======================================")
+end)
+
