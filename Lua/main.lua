@@ -632,3 +632,33 @@ COM_AddCommand("fonoobjetosdemo", function(player)
     CONS_Printf(player, "Demo creada: mano, mapa, pato, bala.")
 end)
 
+
+-- ================================
+-- Nivel educativo 1: silaba MA
+-- ================================
+
+COM_AddCommand("fononivel1", function(player)
+    iniciarSesion()
+
+    CONS_Printf(player, "========== SONIC FONOKIDS ==========")
+    CONS_Printf(player, "NIVEL 1: Bosque de la silaba MA")
+    CONS_Printf(player, "Objetivo educativo:")
+    CONS_Printf(player, "Toca las palabras que comienzan con MA.")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "Palabras objetivo:")
+    CONS_Printf(player, "- mano")
+    CONS_Printf(player, "- mapa")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "Distractores:")
+    CONS_Printf(player, "- pato")
+    CONS_Printf(player, "- bala")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "Al terminar, escribe fonoreporte o fonoia.")
+    CONS_Printf(player, "====================================")
+
+    crearObjetoFono(player, "mano", 0)
+    crearObjetoFono(player, "mapa", 1)
+    crearObjetoFono(player, "pato", 2)
+    crearObjetoFono(player, "bala", 3)
+end)
+
