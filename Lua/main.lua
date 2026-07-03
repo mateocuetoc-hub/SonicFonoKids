@@ -742,3 +742,87 @@ COM_AddCommand("fonoprogreso", function(player)
     CONS_Printf(player, "=======================================")
 end)
 
+
+-- ================================
+-- Nivel 1 secuencial: un objeto a la vez
+-- ================================
+
+local nivelSecuencial = {
+    activo = false,
+    indice = 1,
+    palabras = {
+        "mano",
+        "mapa",
+        "pato",
+        "bala"
+    }
+}
+
+local function crearSiguienteObjetoSecuencial(player)
+    if nivelSecuencial.activo == false then
+        return
+    end
+
+    if nivelSecuencial.indice > #nivelSecuencial.palabras then
+        nivelSecuencial.activo = false
+        return
+    end
+
+    local palabra = nivelSecuencial.palabras[nivelSecuencial.indice]
+    local dato = bancoPalabras[palabra]
+
+    CONS_Printf(player, "========== OBJETO FONOKIDS ==========")
+    CONS_Printf(player, "Objeto " .. tostring(nivelSecuencial.indice) .. " de " .. tostring(#nivelSecuencial.palabras))
+    CONS_Printf(player, "Palabra actual: " .. tostring(palabra))
+
+    if dato ~= nil and dato.correcto == true then
+        CONS_Printf(player, "Esta palabra comienza con " .. tostring(objetivoActual) .. ".")
+    else
+        CONS_Printf(player, "Esta palabra NO comienza con " .. tostring(objetivoActual) .. ".")
+    end
+
+    CONS_Printf(player, "Toca el objeto para registrar la respuesta.")
+    CONS_Printf(player, "=====================================")
+
+    crearObjetoFono(player, palabra, 0)
+end
+
+local registrarCorrectoSecBase = registrarCorrecto
+registrarCorrecto = function(player, palabra)
+    registrarCorrectoSecBase(player, palabra)
+
+    if nivelSecuencial.activo == true and sesion.completado ~= true then
+        nivelSecuencial.indice = nivelSecuencial.indice + 1
+        crearSiguienteObjetoSecuencial(player)
+    end
+end
+
+local registrarErrorSecBase = registrarError
+registrarError = function(player, palabra, tipo)
+    registrarErrorSecBase(player, palabra, tipo)
+
+    if nivelSecuencial.activo == true and sesion.completado ~= true then
+        nivelSecuencial.indice = nivelSecuencial.indice + 1
+        crearSiguienteObjetoSecuencial(player)
+    end
+end
+
+COM_AddCommand("fononivel1seq", function(player)
+    iniciarSesion()
+
+    sesion.total_esperado = 4
+    sesion.reporte_auto_mostrado = false
+
+    nivelSecuencial.activo = true
+    nivelSecuencial.indice = 1
+
+    CONS_Printf(player, "========== SONIC FONOKIDS ==========")
+    CONS_Printf(player, "NIVEL 1 SECUENCIAL: silaba MA")
+    CONS_Printf(player, "Aparecera un objeto a la vez.")
+    CONS_Printf(player, "El sistema registrara si la palabra corresponde o no a la silaba MA.")
+    CONS_Printf(player, "Al terminar, el reporte aparecera automaticamente.")
+    CONS_Printf(player, "====================================")
+
+    crearSiguienteObjetoSecuencial(player)
+end)
+
