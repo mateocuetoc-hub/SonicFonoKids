@@ -347,7 +347,11 @@ local function mostrarReporteDescriptivo(player)
     CONS_Printf(player, "========== SONIC FONOKIDS ==========")
     CONS_Printf(player, "REPORTE DESCRIPTIVO NO CLINICO")
     CONS_Printf(player, "Sesion: " .. tostring(sesion.jugador))
-    CONS_Printf(player, "Actividad: silaba inicial " .. tostring(sesion.objetivo))
+    if sesion.actividad ~= nil and string.find(tostring(sesion.actividad), "vocabulario") ~= nil then
+        CONS_Printf(player, "Actividad: vocabulario - categoria " .. tostring(sesion.objetivo))
+    else
+        CONS_Printf(player, "Actividad: silaba inicial " .. tostring(sesion.objetivo))
+    end
     CONS_Printf(player, "Intentos: " .. tostring(sesion.intentos))
     CONS_Printf(player, "Correctos: " .. tostring(sesion.correctos))
     CONS_Printf(player, "Errores: " .. tostring(sesion.errores))
@@ -603,10 +607,10 @@ local function procesarObjetoFono(special, toucher)
 
     if dato.correcto == true then
         registrarCorrecto(player, dato.texto)
-        CONS_Printf(player, "Encontraste una palabra objetivo: " .. string.upper(dato.texto))
+        -- Feedback detallado manejado por registrarCorrecto.
     else
         registrarError(player, dato.texto, dato.tipo)
-        CONS_Printf(player, "Esta palabra no era de la familia " .. tostring(objetivoActual) .. ": " .. string.upper(dato.texto))
+        -- Feedback detallado manejado por registrarError.
     end
 
     objetosFono[special] = nil
@@ -621,7 +625,7 @@ end
 addHook("TouchSpecial", procesarObjetoFono, MT_FONO_OBJETO)
 
 COM_AddCommand("fonoobj", function(player, palabra)
-    crearObjetoFono(player, palabra, 0)
+    crearObjetoFono(player, palabra, 1)
 end)
 
 COM_AddCommand("fonoobjetosdemo", function(player)
@@ -784,7 +788,7 @@ local function crearSiguienteObjetoSecuencial(player)
     CONS_Printf(player, "Toca el objeto para responder.")
     CONS_Printf(player, "=====================================")
 
-    crearObjetoFono(player, palabra, 0)
+    crearObjetoFono(player, palabra, 1)
 end
 
 local registrarCorrectoSecBase = registrarCorrecto
@@ -1177,4 +1181,286 @@ COM_AddCommand("fonocopia", function(player)
     CONS_Printf(player, "COPIAR DESDE AQUI / COPIAR HASTA AQUI")
     CONS_Printf(player, "Luego pegalo en la IA junto al prompt de Reports/prompt_reporte_ia.md")
 end)
+
+
+-- ================================
+-- Modulo de vocabulario: categorias semanticas
+-- ================================
+
+-- Agregar categoria a palabras existentes
+if bancoPalabras["pato"] ~= nil then
+    bancoPalabras["pato"].categoria = "animal"
+end
+
+if bancoPalabras["sopa"] ~= nil then
+    bancoPalabras["sopa"].categoria = "comida"
+end
+
+if bancoPalabras["mano"] ~= nil then
+    bancoPalabras["mano"].categoria = "parte_cuerpo"
+end
+
+if bancoPalabras["mapa"] ~= nil then
+    bancoPalabras["mapa"].categoria = "objeto"
+end
+
+if bancoPalabras["bala"] ~= nil then
+    bancoPalabras["bala"].categoria = "objeto"
+end
+
+-- Nuevas palabras para vocabulario
+bancoPalabras["gato"] = {
+    texto = "gato",
+    silaba = "GA",
+    categoria = "animal",
+    correcto = false,
+    tipo = "distractor_categoria"
+}
+
+bancoPalabras["perro"] = {
+    texto = "perro",
+    silaba = "PE",
+    categoria = "animal",
+    correcto = false,
+    tipo = "distractor_categoria"
+}
+
+bancoPalabras["mesa"] = {
+    texto = "mesa",
+    silaba = "ME",
+    categoria = "objeto",
+    correcto = false,
+    tipo = "distractor_categoria"
+}
+
+bancoPalabras["auto"] = {
+    texto = "auto",
+    silaba = "AU",
+    categoria = "transporte",
+    correcto = false,
+    tipo = "distractor_categoria"
+}
+
+local vocabSecuencial = {
+    activo = false,
+    indice = 1,
+    categoriaObjetivo = "animal",
+    palabras = {
+        "pato",
+        "gato",
+        "perro",
+        "mesa",
+        "auto",
+        "sopa"
+    }
+}
+
+local function fonoConfigurarBancoPorCategoria(categoriaObjetivo)
+    for clave, dato in pairs(bancoPalabras) do
+        if dato.categoria == categoriaObjetivo then
+            dato.correcto = true
+            dato.tipo = "objetivo_categoria"
+        else
+            dato.correcto = false
+            dato.tipo = "distractor_categoria"
+        end
+    end
+end
+
+local function crearSiguienteObjetoVocabulario(player)
+    if vocabSecuencial.activo == false then
+        return
+    end
+
+    if vocabSecuencial.indice > #vocabSecuencial.palabras then
+        vocabSecuencial.activo = false
+        return
+    end
+
+    local palabra = vocabSecuencial.palabras[vocabSecuencial.indice]
+    local dato = bancoPalabras[palabra]
+
+    CONS_Printf(player, "========== VOCABULARIO FONOKIDS ==========")
+    CONS_Printf(player, "Objeto " .. tostring(vocabSecuencial.indice) .. " de " .. tostring(#vocabSecuencial.palabras))
+    CONS_Printf(player, "Palabra actual: " .. tostring(palabra))
+    CONS_Printf(player, "Objetivo: toca solo ANIMALES.")
+
+    if dato ~= nil and dato.categoria == vocabSecuencial.categoriaObjetivo then
+        CONS_Printf(player, "Esta palabra pertenece a la categoria ANIMALES.")
+    else
+        CONS_Printf(player, "Esta palabra NO pertenece a la categoria ANIMALES.")
+    end
+
+    CONS_Printf(player, "Toca el objeto para registrar la respuesta.")
+    CONS_Printf(player, "==========================================")
+
+    if fonoSetHud ~= nil then
+        fonoSetHud(player, "PALABRA: " .. string.upper(tostring(palabra)), "CATEGORIA: ANIMALES", TICRATE * 8)
+    end
+
+    crearObjetoFono(player, palabra, 1)
+end
+
+local registrarCorrectoVocabBase = registrarCorrecto
+registrarCorrecto = function(player, palabra)
+    registrarCorrectoVocabBase(player, palabra)
+
+    if vocabSecuencial.activo == true and sesion.completado ~= true then
+        vocabSecuencial.indice = vocabSecuencial.indice + 1
+        crearSiguienteObjetoVocabulario(player)
+    end
+end
+
+local registrarErrorVocabBase = registrarError
+registrarError = function(player, palabra, tipo)
+    registrarErrorVocabBase(player, palabra, tipo)
+
+    if vocabSecuencial.activo == true and sesion.completado ~= true then
+        vocabSecuencial.indice = vocabSecuencial.indice + 1
+        crearSiguienteObjetoVocabulario(player)
+    end
+end
+
+COM_AddCommand("fonovocab", function(player)
+    fonoConfigurarBancoPorCategoria("animal")
+
+    iniciarSesion()
+
+    sesion.actividad = "vocabulario_categoria_animales"
+    sesion.objetivo = "ANIMALES"
+    sesion.total_esperado = #vocabSecuencial.palabras
+    sesion.reporte_auto_mostrado = false
+
+    vocabSecuencial.activo = true
+    vocabSecuencial.indice = 1
+    vocabSecuencial.categoriaObjetivo = "animal"
+
+    if nivelSecuencial ~= nil then
+        nivelSecuencial.activo = false
+    end
+
+    CONS_Printf(player, "========== SONIC FONOKIDS ==========")
+    CONS_Printf(player, "NIVEL VOCABULARIO: Animales")
+    CONS_Printf(player, "Objetivo educativo:")
+    CONS_Printf(player, "Toca solo palabras que sean ANIMALES.")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "Animales:")
+    CONS_Printf(player, "- pato")
+    CONS_Printf(player, "- gato")
+    CONS_Printf(player, "- perro")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "Distractores:")
+    CONS_Printf(player, "- mesa")
+    CONS_Printf(player, "- auto")
+    CONS_Printf(player, "- sopa")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "El reporte aparecera automaticamente al terminar.")
+    CONS_Printf(player, "====================================")
+
+    crearSiguienteObjetoVocabulario(player)
+end)
+
+COM_AddCommand("fonovocablista", function(player)
+    CONS_Printf(player, "========== VOCABULARIO FONOKIDS ==========")
+    CONS_Printf(player, "Categoria actual: ANIMALES")
+    CONS_Printf(player, "Correctas: pato, gato, perro")
+    CONS_Printf(player, "Distractores: mesa, auto, sopa")
+    CONS_Printf(player, "Comando: fonovocab")
+    CONS_Printf(player, "==========================================")
+end)
+
+
+-- ================================
+-- Feedback ajustado por tipo de actividad
+-- ================================
+
+local function fonoEsActividadVocabulario()
+    if sesion ~= nil and sesion.actividad ~= nil then
+        return string.find(tostring(sesion.actividad), "vocabulario") ~= nil
+    end
+
+    return false
+end
+
+registrarCorrecto = function(player, palabra)
+    if sesion.completado == true then
+        return
+    end
+
+    sesion.intentos = (sesion.intentos or 0) + 1
+    sesion.correctos = (sesion.correctos or 0) + 1
+
+    local p = string.upper(tostring(palabra or ""))
+
+    if fonoEsActividadVocabulario() == true then
+        CONS_Printf(player, "¡Muy bien! " .. p .. " pertenece a la categoria " .. tostring(sesion.objetivo) .. ".")
+        CONS_Printf(player, "¡Sigue asi!")
+
+        if fonoSetHud ~= nil then
+            fonoSetHud(player, "MUY BIEN: " .. p, "ES DE " .. tostring(sesion.objetivo), TICRATE * 4)
+        end
+    else
+        fonoMostrarFeedbackCorrecto(player, palabra)
+    end
+
+    if sesion.total_esperado == nil and sesion.correctos >= 5 then
+        sesion.completado = true
+        CONS_Printf(player, "Actividad completada. Escribe fonoreporte para ver el reporte.")
+    end
+
+    if revisarCierreActividad ~= nil then
+        revisarCierreActividad(player)
+    end
+
+    if nivelSecuencial ~= nil and nivelSecuencial.activo == true and sesion.completado ~= true then
+        nivelSecuencial.indice = nivelSecuencial.indice + 1
+        crearSiguienteObjetoSecuencial(player)
+    end
+
+    if vocabSecuencial ~= nil and vocabSecuencial.activo == true and sesion.completado ~= true then
+        vocabSecuencial.indice = vocabSecuencial.indice + 1
+        crearSiguienteObjetoVocabulario(player)
+    end
+end
+
+registrarError = function(player, palabra, tipo)
+    if sesion.completado == true then
+        return
+    end
+
+    sesion.intentos = (sesion.intentos or 0) + 1
+    sesion.errores = (sesion.errores or 0) + 1
+
+    table.insert(sesion.errores_detalle, {
+        palabra = palabra,
+        tipo = tipo
+    })
+
+    local p = string.upper(tostring(palabra or ""))
+
+    if fonoEsActividadVocabulario() == true then
+        CONS_Printf(player, "Buen intento. " .. p .. " no pertenece a la categoria " .. tostring(sesion.objetivo) .. ".")
+        CONS_Printf(player, "Busquemos palabras que sean " .. tostring(sesion.objetivo) .. ".")
+
+        if fonoSetHud ~= nil then
+            fonoSetHud(player, "BUEN INTENTO: " .. p, "NO ES DE " .. tostring(sesion.objetivo), TICRATE * 4)
+        end
+    else
+        fonoMostrarFeedbackError(player, palabra)
+    end
+
+    if revisarCierreActividad ~= nil then
+        revisarCierreActividad(player)
+    end
+
+    if nivelSecuencial ~= nil and nivelSecuencial.activo == true and sesion.completado ~= true then
+        nivelSecuencial.indice = nivelSecuencial.indice + 1
+        crearSiguienteObjetoSecuencial(player)
+    end
+
+    if vocabSecuencial ~= nil and vocabSecuencial.activo == true and sesion.completado ~= true then
+        vocabSecuencial.indice = vocabSecuencial.indice + 1
+        crearSiguienteObjetoVocabulario(player)
+    end
+end
 
