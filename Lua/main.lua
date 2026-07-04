@@ -1,3 +1,6 @@
+-- Forward declarations FonoKids
+local fonoLimpiarObjetosActivos
+
 print("====================================")
 print("Sonic FonoKids v0.0.3 cargado")
 print("====================================")
@@ -625,7 +628,7 @@ end
 addHook("TouchSpecial", procesarObjetoFono, MT_FONO_OBJETO)
 
 COM_AddCommand("fonoobj", function(player, palabra)
-    crearObjetoFono(player, palabra, 1)
+    crearObjetoFono(player, palabra, 4)
 end)
 
 COM_AddCommand("fonoobjetosdemo", function(player)
@@ -642,6 +645,10 @@ end)
 -- ================================
 
 COM_AddCommand("fononivel1", function(player)
+    if fonoLimpiarObjetosActivos ~= nil then
+        fonoLimpiarObjetosActivos(player)
+    end
+
     iniciarSesion()
 
     CONS_Printf(player, "========== SONIC FONOKIDS ==========")
@@ -704,6 +711,10 @@ registrarError = function(player, palabra, tipo)
 end
 
 COM_AddCommand("fononivel1auto", function(player)
+    if fonoLimpiarObjetosActivos ~= nil then
+        fonoLimpiarObjetosActivos(player)
+    end
+
     iniciarSesion()
 
     sesion.total_esperado = 4
@@ -788,7 +799,7 @@ local function crearSiguienteObjetoSecuencial(player)
     CONS_Printf(player, "Toca el objeto para responder.")
     CONS_Printf(player, "=====================================")
 
-    crearObjetoFono(player, palabra, 1)
+    crearObjetoFono(player, palabra, 4)
 end
 
 local registrarCorrectoSecBase = registrarCorrecto
@@ -812,6 +823,10 @@ registrarError = function(player, palabra, tipo)
 end
 
 COM_AddCommand("fononivel1seq", function(player)
+    if fonoLimpiarObjetosActivos ~= nil then
+        fonoLimpiarObjetosActivos(player)
+    end
+
     iniciarSesion()
 
     sesion.total_esperado = 4
@@ -1061,6 +1076,10 @@ local function fonoConfigurarBancoPorSilaba(silabaObjetivo)
 end
 
 local function fonoIniciarNivelSilaba(player, silabaObjetivo, palabrasNivel, nombreNivel)
+    if fonoLimpiarObjetosActivos ~= nil then
+        fonoLimpiarObjetosActivos(player)
+    end
+
     fonoConfigurarBancoPorSilaba(silabaObjetivo)
     iniciarSesion()
 
@@ -1298,7 +1317,7 @@ local function crearSiguienteObjetoVocabulario(player)
         fonoSetHud(player, "PALABRA: " .. string.upper(tostring(palabra)), "CATEGORIA: ANIMALES", TICRATE * 8)
     end
 
-    crearObjetoFono(player, palabra, 1)
+    crearObjetoFono(player, palabra, 4)
 end
 
 local registrarCorrectoVocabBase = registrarCorrecto
@@ -1322,6 +1341,10 @@ registrarError = function(player, palabra, tipo)
 end
 
 COM_AddCommand("fonovocab", function(player)
+    if fonoLimpiarObjetosActivos ~= nil then
+        fonoLimpiarObjetosActivos(player)
+    end
+
     fonoConfigurarBancoPorCategoria("animal")
 
     iniciarSesion()
@@ -1565,10 +1588,14 @@ crearSiguienteObjetoVocabulario = function(player)
         fonoSetHud(player, "PALABRA: " .. string.upper(tostring(palabra)), "CATEGORIA: " .. categoriaBonita, TICRATE * 8)
     end
 
-    crearObjetoFono(player, palabra, 1)
+    crearObjetoFono(player, palabra, 4)
 end
 
 local function fonoIniciarVocabCategoria(player, categoria, palabras, nombreNivel)
+    if fonoLimpiarObjetosActivos ~= nil then
+        fonoLimpiarObjetosActivos(player)
+    end
+
     fonoConfigurarBancoPorCategoria(categoria)
 
     iniciarSesion()
@@ -1629,4 +1656,127 @@ COM_AddCommand("fonovocabniveles", function(player)
     CONS_Printf(player, "fonotransporte -> categoria TRANSPORTES")
     CONS_Printf(player, "=========================================")
 end)
+
+
+-- ================================
+-- Demo presentable Sonic FonoKids
+-- ================================
+
+COM_AddCommand("fonodemo", function(player)
+    CONS_Printf(player, "========== SONIC FONOKIDS ==========")
+    CONS_Printf(player, "DEMO GENERAL DEL PROYECTO")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "Sonic FonoKids es un mod educativo experimental")
+    CONS_Printf(player, "para Sonic Robo Blast 2.")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "Objetivo:")
+    CONS_Printf(player, "Apoyar actividades ludicas relacionadas con lenguaje,")
+    CONS_Printf(player, "conciencia fonologica y vocabulario infantil.")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "Modulos disponibles:")
+    CONS_Printf(player, "1) Conciencia fonologica:")
+    CONS_Printf(player, "   fonoma  -> silaba MA")
+    CONS_Printf(player, "   fonopa  -> silaba PA")
+    CONS_Printf(player, "   fonoba  -> silaba BA")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "2) Vocabulario por categorias:")
+    CONS_Printf(player, "   fonovocab      -> animales")
+    CONS_Printf(player, "   fonocomida     -> comidas")
+    CONS_Printf(player, "   fonotransporte -> transportes")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "Reportes:")
+    CONS_Printf(player, "   fonoreporte -> reporte descriptivo")
+    CONS_Printf(player, "   fonojson    -> datos estructurados para IA")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "Demo rapida:")
+    CONS_Printf(player, "   fonodemoma     -> inicia demo de silaba MA")
+    CONS_Printf(player, "   fonodemovocab  -> inicia demo de vocabulario animales")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "Advertencia:")
+    CONS_Printf(player, "Este proyecto no diagnostica ni reemplaza a una fonoaudiologa.")
+    CONS_Printf(player, "Los datos deben ser interpretados por una persona del area.")
+    CONS_Printf(player, "====================================")
+
+    if fonoSetHud ~= nil then
+        fonoSetHud(player, "SONIC FONOKIDS", "ESCRIBE fonodemoma", TICRATE * 8)
+    end
+end)
+
+COM_AddCommand("fonodemoma", function(player)
+    CONS_Printf(player, "Iniciando demo de conciencia fonologica: silaba MA.")
+    CONS_Printf(player, "Toca los objetos que aparecen.")
+    CONS_Printf(player, "Al finalizar se mostrara el reporte automaticamente.")
+
+    fonoIniciarNivelSilaba(player, "MA", {
+        "mano",
+        "mapa",
+        "pato",
+        "bala"
+    }, "DEMO: Conciencia fonologica - silaba MA")
+end)
+
+COM_AddCommand("fonodemovocab", function(player)
+    CONS_Printf(player, "Iniciando demo de vocabulario: categoria ANIMALES.")
+    CONS_Printf(player, "Toca los objetos que aparecen.")
+    CONS_Printf(player, "Al finalizar se mostrara el reporte automaticamente.")
+
+    fonoIniciarVocabCategoria(player, "animal", {
+        "pato",
+        "gato",
+        "perro",
+        "mesa",
+        "auto",
+        "sopa"
+    }, "DEMO: Vocabulario - categoria Animales")
+end)
+
+COM_AddCommand("fonocomandos", function(player)
+    CONS_Printf(player, "========== COMANDOS FONOKIDS ==========")
+    CONS_Printf(player, "fonodemo       -> guia general del proyecto")
+    CONS_Printf(player, "fonodemoma     -> demo rapida de silaba MA")
+    CONS_Printf(player, "fonodemovocab  -> demo rapida de vocabulario")
+    CONS_Printf(player, "fonoma         -> nivel MA")
+    CONS_Printf(player, "fonopa         -> nivel PA")
+    CONS_Printf(player, "fonoba         -> nivel BA")
+    CONS_Printf(player, "fonovocab      -> categoria animales")
+    CONS_Printf(player, "fonocomida     -> categoria comidas")
+    CONS_Printf(player, "fonotransporte -> categoria transportes")
+    CONS_Printf(player, "fonoreporte    -> reporte descriptivo")
+    CONS_Printf(player, "fonojson       -> datos para IA")
+    CONS_Printf(player, "=======================================")
+end)
+
+
+
+-- ================================
+-- Limpieza de objetos activos FonoKids
+-- ================================
+
+fonoLimpiarObjetosActivos = function(player)
+    if objetosFono ~= nil then
+        for objeto, _ in pairs(objetosFono) do
+            if objeto ~= nil and objeto.valid then
+                P_RemoveMobj(objeto)
+            end
+
+            objetosFono[objeto] = nil
+        end
+    end
+
+    if nivelSecuencial ~= nil then
+        nivelSecuencial.activo = false
+    end
+
+    if vocabSecuencial ~= nil then
+        vocabSecuencial.activo = false
+    end
+
+    if quizFono ~= nil then
+        quizFono.activo = false
+    end
+
+    if player ~= nil then
+        CONS_Printf(player, "Objetos anteriores limpiados.")
+    end
+end
 
