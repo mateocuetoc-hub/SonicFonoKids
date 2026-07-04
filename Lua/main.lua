@@ -1464,3 +1464,169 @@ registrarError = function(player, palabra, tipo)
     end
 end
 
+
+-- ================================
+-- Nuevas categorias de vocabulario
+-- ================================
+
+-- Palabras de comida
+bancoPalabras["pan"] = {
+    texto = "pan",
+    silaba = "PA",
+    categoria = "comida",
+    correcto = false,
+    tipo = "distractor_categoria"
+}
+
+bancoPalabras["queso"] = {
+    texto = "queso",
+    silaba = "QUE",
+    categoria = "comida",
+    correcto = false,
+    tipo = "distractor_categoria"
+}
+
+bancoPalabras["manzana"] = {
+    texto = "manzana",
+    silaba = "MA",
+    categoria = "comida",
+    correcto = false,
+    tipo = "distractor_categoria"
+}
+
+-- Palabras de transporte
+bancoPalabras["bus"] = {
+    texto = "bus",
+    silaba = "BU",
+    categoria = "transporte",
+    correcto = false,
+    tipo = "distractor_categoria"
+}
+
+bancoPalabras["tren"] = {
+    texto = "tren",
+    silaba = "TRE",
+    categoria = "transporte",
+    correcto = false,
+    tipo = "distractor_categoria"
+}
+
+-- auto ya existe, pero nos aseguramos de que tenga categoria transporte
+if bancoPalabras["auto"] ~= nil then
+    bancoPalabras["auto"].categoria = "transporte"
+end
+
+-- ================================
+-- Vocabulario generico por categoria
+-- ================================
+
+local function fonoNombreCategoriaBonito(categoria)
+    if categoria == "animal" then
+        return "ANIMALES"
+    elseif categoria == "comida" then
+        return "COMIDAS"
+    elseif categoria == "transporte" then
+        return "TRANSPORTES"
+    end
+
+    return string.upper(tostring(categoria))
+end
+
+-- Reemplazamos la funcion visual de vocabulario por una version generica
+crearSiguienteObjetoVocabulario = function(player)
+    if vocabSecuencial.activo == false then
+        return
+    end
+
+    if vocabSecuencial.indice > #vocabSecuencial.palabras then
+        vocabSecuencial.activo = false
+        return
+    end
+
+    local palabra = vocabSecuencial.palabras[vocabSecuencial.indice]
+    local dato = bancoPalabras[palabra]
+    local categoriaBonita = fonoNombreCategoriaBonito(vocabSecuencial.categoriaObjetivo)
+
+    CONS_Printf(player, "========== VOCABULARIO FONOKIDS ==========")
+    CONS_Printf(player, "Objeto " .. tostring(vocabSecuencial.indice) .. " de " .. tostring(#vocabSecuencial.palabras))
+    CONS_Printf(player, "Palabra actual: " .. tostring(palabra))
+    CONS_Printf(player, "Objetivo: toca solo " .. categoriaBonita .. ".")
+
+    if dato ~= nil and dato.categoria == vocabSecuencial.categoriaObjetivo then
+        CONS_Printf(player, "Esta palabra pertenece a la categoria " .. categoriaBonita .. ".")
+    else
+        CONS_Printf(player, "Esta palabra NO pertenece a la categoria " .. categoriaBonita .. ".")
+    end
+
+    CONS_Printf(player, "Toca el objeto para registrar la respuesta.")
+    CONS_Printf(player, "==========================================")
+
+    if fonoSetHud ~= nil then
+        fonoSetHud(player, "PALABRA: " .. string.upper(tostring(palabra)), "CATEGORIA: " .. categoriaBonita, TICRATE * 8)
+    end
+
+    crearObjetoFono(player, palabra, 1)
+end
+
+local function fonoIniciarVocabCategoria(player, categoria, palabras, nombreNivel)
+    fonoConfigurarBancoPorCategoria(categoria)
+
+    iniciarSesion()
+
+    local categoriaBonita = fonoNombreCategoriaBonito(categoria)
+
+    sesion.actividad = "vocabulario_categoria_" .. tostring(categoria)
+    sesion.objetivo = categoriaBonita
+    sesion.total_esperado = #palabras
+    sesion.reporte_auto_mostrado = false
+
+    vocabSecuencial.activo = true
+    vocabSecuencial.indice = 1
+    vocabSecuencial.categoriaObjetivo = categoria
+    vocabSecuencial.palabras = palabras
+
+    if nivelSecuencial ~= nil then
+        nivelSecuencial.activo = false
+    end
+
+    CONS_Printf(player, "========== SONIC FONOKIDS ==========")
+    CONS_Printf(player, nombreNivel)
+    CONS_Printf(player, "Objetivo educativo:")
+    CONS_Printf(player, "Toca solo palabras de la categoria " .. categoriaBonita .. ".")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "El reporte aparecera automaticamente al terminar.")
+    CONS_Printf(player, "====================================")
+
+    crearSiguienteObjetoVocabulario(player)
+end
+
+COM_AddCommand("fonocomida", function(player)
+    fonoIniciarVocabCategoria(player, "comida", {
+        "pan",
+        "queso",
+        "manzana",
+        "pato",
+        "auto",
+        "mesa"
+    }, "NIVEL VOCABULARIO: Comidas")
+end)
+
+COM_AddCommand("fonotransporte", function(player)
+    fonoIniciarVocabCategoria(player, "transporte", {
+        "auto",
+        "bus",
+        "tren",
+        "pato",
+        "sopa",
+        "mesa"
+    }, "NIVEL VOCABULARIO: Transportes")
+end)
+
+COM_AddCommand("fonovocabniveles", function(player)
+    CONS_Printf(player, "========== CATEGORIAS FONOKIDS ==========")
+    CONS_Printf(player, "fonovocab      -> categoria ANIMALES")
+    CONS_Printf(player, "fonocomida     -> categoria COMIDAS")
+    CONS_Printf(player, "fonotransporte -> categoria TRANSPORTES")
+    CONS_Printf(player, "=========================================")
+end)
+
