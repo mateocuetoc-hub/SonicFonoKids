@@ -2409,3 +2409,220 @@ COM_AddCommand("fonoparesniveles", function(player)
     CONS_Printf(player, "=======================================")
 end)
 
+
+
+-- ================================
+-- Reporte detallado para modo pares
+-- ================================
+
+local function fonoEsActividadPares()
+    if sesion == nil then
+        return false
+    end
+
+    if sesion.actividad == nil then
+        return false
+    end
+
+    return string.find(tostring(sesion.actividad), "eleccion_pares") ~= nil
+end
+
+local function fonoPalabraEsCorrectaActual(palabra)
+    if bancoPalabras == nil then
+        return false
+    end
+
+    local dato = bancoPalabras[palabra]
+
+    if dato == nil then
+        return false
+    end
+
+    if fonoPares ~= nil and fonoPares.modo == "categoria" then
+        return dato.categoria == fonoPares.categoriaObjetivo
+    end
+
+    return dato.correcto == true
+end
+
+local function fonoRespuestaEsperadaDelPar(par)
+    if par == nil then
+        return "desconocida"
+    end
+
+    if fonoPalabraEsCorrectaActual(par.izquierda) == true then
+        return tostring(par.izquierda)
+    end
+
+    if fonoPalabraEsCorrectaActual(par.derecha) == true then
+        return tostring(par.derecha)
+    end
+
+    return "desconocida"
+end
+
+local function fonoRegistrarDetallePar(resultado, palabraSeleccionada, tipoError)
+    if fonoEsActividadPares() == false then
+        return
+    end
+
+    if fonoPares == nil then
+        return
+    end
+
+    if fonoPares.activo ~= true then
+        return
+    end
+
+    if fonoPares.pares == nil then
+        return
+    end
+
+    local par = fonoPares.pares[fonoPares.indice]
+
+    if par == nil then
+        return
+    end
+
+    if sesion.pares_detalle == nil then
+        sesion.pares_detalle = {}
+    end
+
+    local esperado = fonoRespuestaEsperadaDelPar(par)
+
+    table.insert(sesion.pares_detalle, {
+        numero = fonoPares.indice,
+        izquierda = par.izquierda,
+        derecha = par.derecha,
+        seleccion = palabraSeleccionada,
+        esperado = esperado,
+        resultado = resultado,
+        tipo = tipoError or ""
+    })
+end
+
+local registrarCorrectoReporteParesBase = registrarCorrecto
+
+registrarCorrecto = function(player, palabra)
+    fonoRegistrarDetallePar("correcto", palabra, "")
+    registrarCorrectoReporteParesBase(player, palabra)
+end
+
+local registrarErrorReporteParesBase = registrarError
+
+registrarError = function(player, palabra, tipo)
+    fonoRegistrarDetallePar("error", palabra, tipo)
+    registrarErrorReporteParesBase(player, palabra, tipo)
+end
+
+local function fonoPorcentajeSesion()
+    if sesion == nil then
+        return 0
+    end
+
+    if sesion.intentos == nil or sesion.intentos <= 0 then
+        return 0
+    end
+
+    return (sesion.correctos * 100) / sesion.intentos
+end
+
+local function fonoResultadoDescriptivoPares(porcentaje)
+    if porcentaje >= 80 then
+        return "desempeno alto dentro de la actividad"
+    elseif porcentaje >= 50 then
+        return "desempeno intermedio dentro de la actividad"
+    end
+
+    return "desempeno bajo dentro de la actividad"
+end
+
+local mostrarReporteDescriptivoBasePares = mostrarReporteDescriptivo
+
+mostrarReporteDescriptivo = function(player)
+    if fonoEsActividadPares() == false then
+        mostrarReporteDescriptivoBasePares(player)
+        return
+    end
+
+    local porcentaje = fonoPorcentajeSesion()
+    local porcentajeTexto = string.format("%.0f", porcentaje)
+
+    CONS_Printf(player, "========== SONIC FONOKIDS ==========")
+    CONS_Printf(player, "REPORTE DESCRIPTIVO NO CLINICO")
+    CONS_Printf(player, "Sesion: " .. tostring(sesion.jugador))
+
+    if sesion.actividad ~= nil and string.find(tostring(sesion.actividad), "vocabulario") ~= nil then
+        CONS_Printf(player, "Actividad: eleccion entre 2 opciones - categoria " .. tostring(sesion.objetivo))
+    else
+        CONS_Printf(player, "Actividad: eleccion entre 2 opciones - silaba inicial " .. tostring(sesion.objetivo))
+    end
+
+    CONS_Printf(player, "Tipo de actividad: seleccion entre dos alternativas")
+    CONS_Printf(player, "Pares presentados: " .. tostring(sesion.total_esperado or 0))
+    CONS_Printf(player, "Intentos: " .. tostring(sesion.intentos or 0))
+    CONS_Printf(player, "Correctos: " .. tostring(sesion.correctos or 0))
+    CONS_Printf(player, "Errores: " .. tostring(sesion.errores or 0))
+    CONS_Printf(player, "Ayudas usadas: " .. tostring(sesion.ayudas or 0))
+    CONS_Printf(player, "Logro: " .. porcentajeTexto .. "%")
+    CONS_Printf(player, "Resultado descriptivo: " .. fonoResultadoDescriptivoPares(porcentaje))
+
+    if sesion.pares_detalle ~= nil and #sesion.pares_detalle > 0 then
+        CONS_Printf(player, " ")
+        CONS_Printf(player, "Detalle por par:")
+
+        for i = 1, #sesion.pares_detalle do
+            local detalle = sesion.pares_detalle[i]
+            local resultadoTexto = "CORRECTO"
+
+            if detalle.resultado == "error" then
+                resultadoTexto = "ERROR"
+            end
+
+            CONS_Printf(player, "Par " .. tostring(detalle.numero) .. ": " .. string.upper(tostring(detalle.izquierda)) .. " / " .. string.upper(tostring(detalle.derecha)))
+            CONS_Printf(player, "  Seleccion: " .. string.upper(tostring(detalle.seleccion)))
+            CONS_Printf(player, "  Respuesta esperada: " .. string.upper(tostring(detalle.esperado)))
+            CONS_Printf(player, "  Resultado: " .. resultadoTexto)
+        end
+    else
+        CONS_Printf(player, "Detalle por par: no se registraron pares.")
+    end
+
+    if sesion.errores_detalle ~= nil and #sesion.errores_detalle > 0 then
+        CONS_Printf(player, " ")
+        CONS_Printf(player, "Errores observados:")
+
+        for i = 1, #sesion.errores_detalle do
+            local errorDato = sesion.errores_detalle[i]
+            CONS_Printf(player, "- " .. tostring(errorDato.palabra) .. " / " .. tostring(errorDato.tipo))
+        end
+    else
+        CONS_Printf(player, "Errores observados: no se registraron errores.")
+    end
+
+    CONS_Printf(player, "Observacion:")
+    CONS_Printf(player, "Estos datos describen el rendimiento dentro del juego.")
+    CONS_Printf(player, "No constituyen diagnostico fonoaudiologico.")
+    CONS_Printf(player, "La interpretacion debe realizarla una persona del area.")
+    CONS_Printf(player, "====================================")
+end
+
+COM_AddCommand("fonoparesdetalle", function(player)
+    if sesion == nil or sesion.pares_detalle == nil or #sesion.pares_detalle == 0 then
+        CONS_Printf(player, "No hay detalle de pares registrado en esta sesion.")
+        return
+    end
+
+    CONS_Printf(player, "========== DETALLE DE PARES ==========")
+
+    for i = 1, #sesion.pares_detalle do
+        local detalle = sesion.pares_detalle[i]
+        CONS_Printf(player, "Par " .. tostring(detalle.numero) .. ": " .. string.upper(tostring(detalle.izquierda)) .. " / " .. string.upper(tostring(detalle.derecha)))
+        CONS_Printf(player, "Seleccion: " .. string.upper(tostring(detalle.seleccion)))
+        CONS_Printf(player, "Esperada: " .. string.upper(tostring(detalle.esperado)))
+        CONS_Printf(player, "Resultado: " .. string.upper(tostring(detalle.resultado)))
+    end
+
+    CONS_Printf(player, "======================================")
+end)
+
