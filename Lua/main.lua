@@ -352,6 +352,8 @@ local function mostrarReporteDescriptivo(player)
     CONS_Printf(player, "Sesion: " .. tostring(sesion.jugador))
     if sesion.actividad ~= nil and string.find(tostring(sesion.actividad), "vocabulario") ~= nil then
         CONS_Printf(player, "Actividad: vocabulario - categoria " .. tostring(sesion.objetivo))
+    elseif sesion.actividad ~= nil and string.find(tostring(sesion.actividad), "eleccion_pares") ~= nil then
+        CONS_Printf(player, "Actividad: eleccion entre 2 opciones - silaba inicial " .. tostring(sesion.objetivo))
     else
         CONS_Printf(player, "Actividad: silaba inicial " .. tostring(sesion.objetivo))
     end
@@ -1779,4 +1781,243 @@ fonoLimpiarObjetosActivos = function(player)
         CONS_Printf(player, "Objetos anteriores limpiados.")
     end
 end
+
+
+-- ================================
+-- Modo de eleccion entre 2 opciones
+-- ================================
+
+local fonoPares = {
+    activo = false,
+    indice = 1,
+    objetivo = "MA",
+    pares = {},
+    objetos = {}
+}
+
+local function fonoLimpiarObjetosPares()
+    if fonoPares.objetos ~= nil then
+        for i = 1, #fonoPares.objetos do
+            local objeto = fonoPares.objetos[i]
+
+            if objeto ~= nil then
+                if objetosFono ~= nil then
+                    objetosFono[objeto] = nil
+                end
+
+                if objeto.valid then
+                    P_RemoveMobj(objeto)
+                end
+            end
+        end
+    end
+
+    fonoPares.objetos = {}
+end
+
+-- Extendemos la limpieza general para que tambien corte el modo de pares.
+local fonoLimpiarObjetosActivosBasePares = fonoLimpiarObjetosActivos
+
+fonoLimpiarObjetosActivos = function(player)
+    if fonoPares ~= nil then
+        fonoPares.activo = false
+        fonoLimpiarObjetosPares()
+    end
+
+    if fonoLimpiarObjetosActivosBasePares ~= nil then
+        fonoLimpiarObjetosActivosBasePares(player)
+    end
+end
+
+local function crearObjetoFonoPar(player, palabra, lado)
+    if player == nil then
+        return nil
+    end
+
+    if player.mo == nil or player.mo.valid == false then
+        return nil
+    end
+
+    local distanciaFrente = 220 * FRACUNIT
+    local distanciaLado = 120 * FRACUNIT
+
+    local anguloFrente = player.mo.angle
+    local anguloLado = player.mo.angle + ANGLE_90
+
+    local x = player.mo.x + FixedMul(cos(anguloFrente), distanciaFrente)
+    local y = player.mo.y + FixedMul(sin(anguloFrente), distanciaFrente)
+
+    x = x + FixedMul(cos(anguloLado), distanciaLado * lado)
+    y = y + FixedMul(sin(anguloLado), distanciaLado * lado)
+
+    local z = player.mo.z + 32 * FRACUNIT
+
+    local objeto = P_SpawnMobj(x, y, z, MT_FONO_OBJETO)
+
+    if objeto ~= nil then
+        if objetosFono ~= nil then
+            objetosFono[objeto] = palabra
+        end
+
+        table.insert(fonoPares.objetos, objeto)
+
+        CONS_Printf(player, "Objeto educativo creado: " .. tostring(palabra))
+    end
+
+    return objeto
+end
+
+local function crearSiguienteParFono(player)
+    if fonoPares.activo == false then
+        return
+    end
+
+    if fonoPares.indice > #fonoPares.pares then
+        fonoPares.activo = false
+        return
+    end
+
+    fonoLimpiarObjetosPares()
+
+    local par = fonoPares.pares[fonoPares.indice]
+    local izquierda = par.izquierda
+    local derecha = par.derecha
+
+    CONS_Printf(player, "========== ELECCION FONOKIDS ==========")
+    CONS_Printf(player, "Par " .. tostring(fonoPares.indice) .. " de " .. tostring(#fonoPares.pares))
+    CONS_Printf(player, "Objetivo: escoge una palabra que empiece con " .. tostring(fonoPares.objetivo) .. ".")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "Izquierda: " .. string.upper(tostring(izquierda)))
+    CONS_Printf(player, "Derecha: " .. string.upper(tostring(derecha)))
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "Toca solo una opcion.")
+    CONS_Printf(player, "=======================================")
+
+    if fonoSetHud ~= nil then
+        fonoSetHud(
+            player,
+            "BUSCA: " .. tostring(fonoPares.objetivo),
+            "IZQ: " .. string.upper(tostring(izquierda)) .. " | DER: " .. string.upper(tostring(derecha)),
+            TICRATE * 10
+        )
+    end
+
+    crearObjetoFonoPar(player, izquierda, 1)
+    crearObjetoFonoPar(player, derecha, -1)
+end
+
+local function fonoIniciarParesMA(player)
+    if fonoLimpiarObjetosActivos ~= nil then
+        fonoLimpiarObjetosActivos(player)
+    end
+
+    fonoConfigurarBancoPorSilaba("MA")
+    iniciarSesion()
+
+    sesion.actividad = "eleccion_pares_silaba_MA"
+    sesion.objetivo = "MA"
+    sesion.total_esperado = 2
+    sesion.reporte_auto_mostrado = false
+
+    if nivelSecuencial ~= nil then
+        nivelSecuencial.activo = false
+    end
+
+    if vocabSecuencial ~= nil then
+        vocabSecuencial.activo = false
+    end
+
+    fonoPares.activo = true
+    fonoPares.indice = 1
+    fonoPares.objetivo = "MA"
+
+    -- Par 1: correcta a la izquierda.
+    -- Par 2: correcta a la derecha.
+    -- Asi evitamos que el niño aprenda "siempre tocar el mismo lado".
+    fonoPares.pares = {
+        {
+            izquierda = "mano",
+            derecha = "pato"
+        },
+        {
+            izquierda = "bala",
+            derecha = "mapa"
+        }
+    }
+
+    CONS_Printf(player, "========== SONIC FONOKIDS ==========")
+    CONS_Printf(player, "MODO ELECCION ENTRE 2 OPCIONES")
+    CONS_Printf(player, "Objetivo educativo:")
+    CONS_Printf(player, "Escoger la palabra que empieza con MA.")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "Apareceran dos opciones al mismo tiempo.")
+    CONS_Printf(player, "El nino debe tocar solo una.")
+    CONS_Printf(player, "Al final se genera el reporte automaticamente.")
+    CONS_Printf(player, "====================================")
+
+    crearSiguienteParFono(player)
+end
+
+local registrarCorrectoParesBase = registrarCorrecto
+
+registrarCorrecto = function(player, palabra)
+    registrarCorrectoParesBase(player, palabra)
+
+    if fonoPares ~= nil and fonoPares.activo == true then
+        fonoLimpiarObjetosPares()
+
+        if sesion.completado == true then
+            fonoPares.activo = false
+            return
+        end
+
+        fonoPares.indice = fonoPares.indice + 1
+        crearSiguienteParFono(player)
+    end
+end
+
+local registrarErrorParesBase = registrarError
+
+registrarError = function(player, palabra, tipo)
+    registrarErrorParesBase(player, palabra, tipo)
+
+    if fonoPares ~= nil and fonoPares.activo == true then
+        fonoLimpiarObjetosPares()
+
+        if sesion.completado == true then
+            fonoPares.activo = false
+            return
+        end
+
+        fonoPares.indice = fonoPares.indice + 1
+        crearSiguienteParFono(player)
+    end
+end
+
+COM_AddCommand("fonoma2", function(player)
+    fonoIniciarParesMA(player)
+end)
+
+COM_AddCommand("fonoparesma", function(player)
+    fonoIniciarParesMA(player)
+end)
+
+COM_AddCommand("fonodemopares", function(player)
+    CONS_Printf(player, "Iniciando demo de eleccion entre 2 opciones.")
+    CONS_Printf(player, "Actividad: silaba inicial MA.")
+    fonoIniciarParesMA(player)
+end)
+
+COM_AddCommand("fonoparesayuda", function(player)
+    CONS_Printf(player, "========== PARES FONOKIDS ==========")
+    CONS_Printf(player, "fonoma2        -> eleccion entre 2 opciones con silaba MA")
+    CONS_Printf(player, "fonoparesma    -> lo mismo que fonoma2")
+    CONS_Printf(player, "fonodemopares  -> demo presentable del modo pares")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "Ejemplo:")
+    CONS_Printf(player, "Izquierda: MANO")
+    CONS_Printf(player, "Derecha: PATO")
+    CONS_Printf(player, "El niño toca solo una opcion.")
+    CONS_Printf(player, "====================================")
+end)
 
