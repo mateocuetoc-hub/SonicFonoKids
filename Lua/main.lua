@@ -1932,6 +1932,8 @@ local function fonoIniciarParesMA(player)
     fonoPares.activo = true
     fonoPares.indice = 1
     fonoPares.objetivo = "MA"
+    fonoPares.modo = "silaba"
+    fonoPares.categoriaObjetivo = nil
 
     -- Par 1: correcta a la izquierda.
     -- Par 2: correcta a la derecha.
@@ -2271,5 +2273,139 @@ addHook("ThinkFrame", function()
     end
 
     crearSiguienteParFono(player)
+end)
+
+
+
+-- ================================
+-- Pares fonologicos PA y BA
+-- ================================
+
+local function fonoIniciarParesSilaba(player, silabaObjetivo, pares, nombreNivel)
+    if fonoLimpiarObjetosActivos ~= nil then
+        fonoLimpiarObjetosActivos(player)
+    end
+
+    fonoConfigurarBancoPorSilaba(silabaObjetivo)
+    iniciarSesion()
+
+    sesion.actividad = "eleccion_pares_silaba_" .. tostring(silabaObjetivo)
+    sesion.objetivo = silabaObjetivo
+    sesion.total_esperado = #pares
+    sesion.reporte_auto_mostrado = false
+
+    if nivelSecuencial ~= nil then
+        nivelSecuencial.activo = false
+    end
+
+    if vocabSecuencial ~= nil then
+        vocabSecuencial.activo = false
+    end
+
+    fonoPares.activo = true
+    fonoPares.indice = 1
+    fonoPares.modo = "silaba"
+    fonoPares.objetivo = silabaObjetivo
+    fonoPares.categoriaObjetivo = nil
+    fonoPares.pares = pares
+
+    CONS_Printf(player, "========== SONIC FONOKIDS ==========")
+    CONS_Printf(player, nombreNivel)
+    CONS_Printf(player, "Objetivo educativo:")
+    CONS_Printf(player, "Escoger la palabra que empieza con " .. tostring(silabaObjetivo) .. ".")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "Apareceran dos opciones al mismo tiempo.")
+    CONS_Printf(player, "El nino debe tocar solo una.")
+    CONS_Printf(player, "Al final se genera el reporte automaticamente.")
+    CONS_Printf(player, "====================================")
+
+    crearSiguienteParFono(player)
+end
+
+COM_AddCommand("fonopa2", function(player)
+    fonoIniciarParesSilaba(player, "PA", {
+        {
+            izquierda = "pato",
+            derecha = "mano"
+        },
+        {
+            izquierda = "mapa",
+            derecha = "pala"
+        },
+        {
+            izquierda = "papa",
+            derecha = "bala"
+        }
+    }, "MODO PARES: Silaba inicial PA")
+end)
+
+COM_AddCommand("fonoba2", function(player)
+    fonoIniciarParesSilaba(player, "BA", {
+        {
+            izquierda = "bala",
+            derecha = "pato"
+        },
+        {
+            izquierda = "mano",
+            derecha = "barco"
+        },
+        {
+            izquierda = "banco",
+            derecha = "mapa"
+        }
+    }, "MODO PARES: Silaba inicial BA")
+end)
+
+COM_AddCommand("fonodemopa2", function(player)
+    CONS_Printf(player, "Iniciando demo de eleccion entre 2 opciones.")
+    CONS_Printf(player, "Actividad: silaba inicial PA.")
+
+    fonoIniciarParesSilaba(player, "PA", {
+        {
+            izquierda = "pato",
+            derecha = "mano"
+        },
+        {
+            izquierda = "mapa",
+            derecha = "pala"
+        },
+        {
+            izquierda = "papa",
+            derecha = "bala"
+        }
+    }, "DEMO PARES: Silaba inicial PA")
+end)
+
+COM_AddCommand("fonodemoba2", function(player)
+    CONS_Printf(player, "Iniciando demo de eleccion entre 2 opciones.")
+    CONS_Printf(player, "Actividad: silaba inicial BA.")
+
+    fonoIniciarParesSilaba(player, "BA", {
+        {
+            izquierda = "bala",
+            derecha = "pato"
+        },
+        {
+            izquierda = "mano",
+            derecha = "barco"
+        },
+        {
+            izquierda = "banco",
+            derecha = "mapa"
+        }
+    }, "DEMO PARES: Silaba inicial BA")
+end)
+
+COM_AddCommand("fonoparesniveles", function(player)
+    CONS_Printf(player, "========== PARES FONOLOGICOS ==========")
+    CONS_Printf(player, "fonoma2 -> elegir palabra con silaba inicial MA")
+    CONS_Printf(player, "fonopa2 -> elegir palabra con silaba inicial PA")
+    CONS_Printf(player, "fonoba2 -> elegir palabra con silaba inicial BA")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "Demos:")
+    CONS_Printf(player, "fonodemopares -> demo MA")
+    CONS_Printf(player, "fonodemopa2   -> demo PA")
+    CONS_Printf(player, "fonodemoba2   -> demo BA")
+    CONS_Printf(player, "=======================================")
 end)
 
