@@ -1,6 +1,17 @@
-*.pk3
-*.wad
-*.log
+# Backups locales
+Backups/
+*.backup
 *.malo
-Reports/*.txt
-Reports/*.json
+*.old
+*.bak
+
+# Archivos temporales
+*.tmp
+*.swp
+
+# PK3 generado
+../SonicFonoKids.pk3
+SonicFonoKids.pk3
+
+# Logs
+*.log
