@@ -1863,23 +1863,30 @@ local function crearObjetoFonoPar(player, palabra, lado)
         return nil
     end
 
-    local distanciaFrente = 320 * FRACUNIT
-    local distanciaLado = 170 * FRACUNIT
+    -- Vitrina frontal:
+    -- Los dos objetos aparecen DELANTE de Sonic,
+    -- apenas separados entre ellos.
+    local distanciaFrente = 170 * FRACUNIT
+    local separacionLateral = 55 * FRACUNIT
+    local altura = 32 * FRACUNIT
 
     local anguloFrente = player.mo.angle
     local anguloLado = player.mo.angle + ANGLE_90
 
-    local x = player.mo.x + FixedMul(cos(anguloFrente), distanciaFrente)
-    local y = player.mo.y + FixedMul(sin(anguloFrente), distanciaFrente)
+    -- Punto base frente a Sonic
+    local xBase = player.mo.x + FixedMul(cos(anguloFrente), distanciaFrente)
+    local yBase = player.mo.y + FixedMul(sin(anguloFrente), distanciaFrente)
 
-    x = x + FixedMul(cos(anguloLado), distanciaLado * lado)
-    y = y + FixedMul(sin(anguloLado), distanciaLado * lado)
-
-    local z = player.mo.z + 32 * FRACUNIT
+    -- Pequeno desplazamiento lateral para formar dos opciones
+    local x = xBase + FixedMul(cos(anguloLado), separacionLateral * lado)
+    local y = yBase + FixedMul(sin(anguloLado), separacionLateral * lado)
+    local z = player.mo.z + altura
 
     local objeto = P_SpawnMobj(x, y, z, MT_FONO_OBJETO)
 
     if objeto ~= nil then
+        objeto.scale = FRACUNIT * 3 / 2
+
         if objetosFono ~= nil then
             objetosFono[objeto] = palabra
         end
