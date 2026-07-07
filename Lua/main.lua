@@ -1787,6 +1787,8 @@ end
 -- Modo de eleccion entre 2 opciones
 -- ================================
 
+local fonoProgramarSiguientePar
+
 local fonoPares = {
     activo = false,
     indice = 1,
@@ -1838,8 +1840,8 @@ local function crearObjetoFonoPar(player, palabra, lado)
         return nil
     end
 
-    local distanciaFrente = 220 * FRACUNIT
-    local distanciaLado = 120 * FRACUNIT
+    local distanciaFrente = 320 * FRACUNIT
+    local distanciaLado = 170 * FRACUNIT
 
     local anguloFrente = player.mo.angle
     local anguloLado = player.mo.angle + ANGLE_90
@@ -1972,7 +1974,7 @@ registrarCorrecto = function(player, palabra)
         end
 
         fonoPares.indice = fonoPares.indice + 1
-        crearSiguienteParFono(player)
+        fonoProgramarSiguientePar(player)
     end
 end
 
@@ -1990,7 +1992,7 @@ registrarError = function(player, palabra, tipo)
         end
 
         fonoPares.indice = fonoPares.indice + 1
-        crearSiguienteParFono(player)
+        fonoProgramarSiguientePar(player)
     end
 end
 
@@ -2019,5 +2021,255 @@ COM_AddCommand("fonoparesayuda", function(player)
     CONS_Printf(player, "Derecha: PATO")
     CONS_Printf(player, "El niño toca solo una opcion.")
     CONS_Printf(player, "====================================")
+end)
+
+
+
+-- ================================
+-- Modo pares para vocabulario/categorias
+-- ================================
+
+local function fonoParesNombreCategoria(categoria)
+    if categoria == "animal" then
+        return "ANIMALES"
+    elseif categoria == "comida" then
+        return "COMIDAS"
+    elseif categoria == "transporte" then
+        return "TRANSPORTES"
+    end
+
+    return string.upper(tostring(categoria))
+end
+
+-- Reemplazamos la visualizacion del par por una version que sirve
+-- tanto para silabas como para categorias.
+crearSiguienteParFono = function(player)
+    if fonoPares.activo == false then
+        return
+    end
+
+    if fonoPares.indice > #fonoPares.pares then
+        fonoPares.activo = false
+        return
+    end
+
+    fonoLimpiarObjetosPares()
+
+    local par = fonoPares.pares[fonoPares.indice]
+    local izquierda = par.izquierda
+    local derecha = par.derecha
+
+    local textoObjetivo = ""
+    local lineaHud1 = ""
+    local lineaHud2 = ""
+
+    if fonoPares.modo == "categoria" then
+        local categoriaBonita = fonoParesNombreCategoria(fonoPares.categoriaObjetivo)
+
+        textoObjetivo = "escoge una palabra de la categoria " .. categoriaBonita .. "."
+        lineaHud1 = "BUSCA: " .. categoriaBonita
+        lineaHud2 = "IZQ: " .. string.upper(tostring(izquierda)) .. " | DER: " .. string.upper(tostring(derecha))
+    else
+        textoObjetivo = "escoge una palabra que empiece con " .. tostring(fonoPares.objetivo) .. "."
+        lineaHud1 = "BUSCA: " .. tostring(fonoPares.objetivo)
+        lineaHud2 = "IZQ: " .. string.upper(tostring(izquierda)) .. " | DER: " .. string.upper(tostring(derecha))
+    end
+
+    CONS_Printf(player, "========== ELECCION FONOKIDS ==========")
+    CONS_Printf(player, "Par " .. tostring(fonoPares.indice) .. " de " .. tostring(#fonoPares.pares))
+    CONS_Printf(player, "Objetivo: " .. textoObjetivo)
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "Izquierda: " .. string.upper(tostring(izquierda)))
+    CONS_Printf(player, "Derecha: " .. string.upper(tostring(derecha)))
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "Toca solo una opcion.")
+    CONS_Printf(player, "=======================================")
+
+    if fonoSetHud ~= nil then
+        fonoSetHud(player, lineaHud1, lineaHud2, TICRATE * 10)
+    end
+
+    -- Ojo: usamos este orden porque ya quedo probado que coincide
+    -- con izquierda/derecha real dentro del juego.
+    crearObjetoFonoPar(player, izquierda, 1)
+    crearObjetoFonoPar(player, derecha, -1)
+end
+
+local function fonoIniciarParesCategoria(player, categoria, pares, nombreNivel)
+    if fonoLimpiarObjetosActivos ~= nil then
+        fonoLimpiarObjetosActivos(player)
+    end
+
+    fonoConfigurarBancoPorCategoria(categoria)
+    iniciarSesion()
+
+    local categoriaBonita = fonoParesNombreCategoria(categoria)
+
+    sesion.actividad = "eleccion_pares_vocabulario_" .. tostring(categoria)
+    sesion.objetivo = categoriaBonita
+    sesion.total_esperado = #pares
+    sesion.reporte_auto_mostrado = false
+
+    if nivelSecuencial ~= nil then
+        nivelSecuencial.activo = false
+    end
+
+    if vocabSecuencial ~= nil then
+        vocabSecuencial.activo = false
+    end
+
+    fonoPares.activo = true
+    fonoPares.indice = 1
+    fonoPares.modo = "categoria"
+    fonoPares.objetivo = categoriaBonita
+    fonoPares.categoriaObjetivo = categoria
+    fonoPares.pares = pares
+
+    CONS_Printf(player, "========== SONIC FONOKIDS ==========")
+    CONS_Printf(player, nombreNivel)
+    CONS_Printf(player, "Objetivo educativo:")
+    CONS_Printf(player, "Escoger la palabra que pertenece a " .. categoriaBonita .. ".")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "Apareceran dos opciones al mismo tiempo.")
+    CONS_Printf(player, "El nino debe tocar solo una.")
+    CONS_Printf(player, "Al final se genera el reporte automaticamente.")
+    CONS_Printf(player, "====================================")
+
+    crearSiguienteParFono(player)
+end
+
+COM_AddCommand("fonovocab2", function(player)
+    fonoIniciarParesCategoria(player, "animal", {
+        {
+            izquierda = "gato",
+            derecha = "mesa"
+        },
+        {
+            izquierda = "auto",
+            derecha = "perro"
+        },
+        {
+            izquierda = "sopa",
+            derecha = "pato"
+        }
+    }, "MODO PARES: Categoria ANIMALES")
+end)
+
+COM_AddCommand("fonocomida2", function(player)
+    fonoIniciarParesCategoria(player, "comida", {
+        {
+            izquierda = "pan",
+            derecha = "bus"
+        },
+        {
+            izquierda = "perro",
+            derecha = "queso"
+        },
+        {
+            izquierda = "manzana",
+            derecha = "auto"
+        }
+    }, "MODO PARES: Categoria COMIDAS")
+end)
+
+COM_AddCommand("fonotransporte2", function(player)
+    fonoIniciarParesCategoria(player, "transporte", {
+        {
+            izquierda = "auto",
+            derecha = "sopa"
+        },
+        {
+            izquierda = "mesa",
+            derecha = "bus"
+        },
+        {
+            izquierda = "tren",
+            derecha = "gato"
+        }
+    }, "MODO PARES: Categoria TRANSPORTES")
+end)
+
+COM_AddCommand("fonodemovocab2", function(player)
+    CONS_Printf(player, "Iniciando demo de eleccion entre 2 opciones.")
+    CONS_Printf(player, "Actividad: categoria ANIMALES.")
+    fonoIniciarParesCategoria(player, "animal", {
+        {
+            izquierda = "gato",
+            derecha = "mesa"
+        },
+        {
+            izquierda = "auto",
+            derecha = "perro"
+        },
+        {
+            izquierda = "sopa",
+            derecha = "pato"
+        }
+    }, "DEMO PARES: Vocabulario - ANIMALES")
+end)
+
+COM_AddCommand("fonoparesvocab", function(player)
+    CONS_Printf(player, "========== PARES VOCABULARIO ==========")
+    CONS_Printf(player, "fonovocab2       -> elegir ANIMAL")
+    CONS_Printf(player, "fonocomida2      -> elegir COMIDA")
+    CONS_Printf(player, "fonotransporte2  -> elegir TRANSPORTE")
+    CONS_Printf(player, "fonodemovocab2   -> demo de animales")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "Ejemplo:")
+    CONS_Printf(player, "Izquierda: GATO")
+    CONS_Printf(player, "Derecha: MESA")
+    CONS_Printf(player, "El nino toca solo una opcion.")
+    CONS_Printf(player, "=======================================")
+end)
+
+
+
+-- ================================
+-- Pausa entre pares FonoKids
+-- ================================
+
+fonoProgramarSiguientePar = function(player)
+    if fonoPares == nil then
+        return
+    end
+
+    if fonoPares.activo == false then
+        return
+    end
+
+    fonoPares.esperandoSiguiente = true
+    fonoPares.ticsEspera = TICRATE
+    fonoPares.playerEspera = player
+
+    CONS_Printf(player, "Preparando siguiente par...")
+end
+
+addHook("ThinkFrame", function()
+    if fonoPares == nil then
+        return
+    end
+
+    if fonoPares.esperandoSiguiente ~= true then
+        return
+    end
+
+    if fonoPares.ticsEspera > 0 then
+        fonoPares.ticsEspera = fonoPares.ticsEspera - 1
+        return
+    end
+
+    fonoPares.esperandoSiguiente = false
+
+    local player = fonoPares.playerEspera
+
+    if player == nil then
+        return
+    end
+
+    if player.mo == nil or player.mo.valid == false then
+        return
+    end
+
+    crearSiguienteParFono(player)
 end)
 
