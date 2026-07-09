@@ -1194,9 +1194,120 @@ local function fonoMostrarJSON(player)
 end
 
 COM_AddCommand("fonojson", function(player)
-    fonoMostrarJSON(player)
-end)
+    local function jsonTexto(valor)
+        if valor == nil then
+            return ""
+        end
 
+        local texto = tostring(valor)
+        texto = string.gsub(texto, "\\", "\\\\")
+        texto = string.gsub(texto, "\"", "\\\"")
+        return texto
+    end
+
+    local function porcentajeLogroSesion()
+        if sesion == nil then
+            return 0
+        end
+
+        if sesion.intentos == nil or sesion.intentos <= 0 then
+            return 0
+        end
+
+        return (sesion.correctos * 100) / sesion.intentos
+    end
+
+    local porcentaje = 0
+
+    if sesion ~= nil and sesion.intentos ~= nil and sesion.intentos > 0 then
+        local correctos = sesion.correctos or 0
+        local intentos = sesion.intentos or 0
+        local total = correctos * 100
+
+        while total >= intentos do
+            porcentaje = porcentaje + 1
+            total = total - intentos
+        end
+    end
+
+    local porcentajeTexto = tostring(porcentaje)
+
+    local completadoTexto = "false"
+
+    if sesion.completado == true then
+        completadoTexto = "true"
+    end
+
+    local tipoActividad = "actividad_general"
+
+    if sesion.actividad ~= nil and string.find(tostring(sesion.actividad), "eleccion_pares") ~= nil then
+        tipoActividad = "eleccion_entre_dos_opciones"
+    elseif sesion.actividad ~= nil and string.find(tostring(sesion.actividad), "vocabulario") ~= nil then
+        tipoActividad = "vocabulario"
+    elseif sesion.actividad ~= nil and string.find(tostring(sesion.actividad), "silaba") ~= nil then
+        tipoActividad = "conciencia_fonologica"
+    end
+
+    CONS_Printf(player, "========== COPIAR DESDE AQUI ==========")
+    CONS_Printf(player, "{")
+    CONS_Printf(player, "  \"proyecto\": \"Sonic FonoKids\",")
+    CONS_Printf(player, "  \"tipo_reporte\": \"descriptivo_no_clinico\",")
+    CONS_Printf(player, "  \"jugador_anonimo\": \"" .. jsonTexto(sesion.jugador) .. "\",")
+    CONS_Printf(player, "  \"actividad\": \"" .. jsonTexto(sesion.actividad) .. "\",")
+    CONS_Printf(player, "  \"tipo_actividad\": \"" .. jsonTexto(tipoActividad) .. "\",")
+    CONS_Printf(player, "  \"objetivo\": \"" .. jsonTexto(sesion.objetivo) .. "\",")
+    CONS_Printf(player, "  \"nivel\": \"" .. jsonTexto(sesion.nivel) .. "\",")
+    CONS_Printf(player, "  \"intentos_totales\": " .. tostring(sesion.intentos or 0) .. ",")
+    CONS_Printf(player, "  \"respuestas_correctas\": " .. tostring(sesion.correctos or 0) .. ",")
+    CONS_Printf(player, "  \"errores\": " .. tostring(sesion.errores or 0) .. ",")
+    CONS_Printf(player, "  \"ayudas_usadas\": " .. tostring(sesion.ayudas or 0) .. ",")
+    CONS_Printf(player, "  \"porcentaje_logro\": " .. porcentajeTexto .. ",")
+    CONS_Printf(player, "  \"completado\": \"" .. completadoTexto .. "\",")
+    CONS_Printf(player, "  \"advertencia\": \"Este reporte no constituye diagnostico fonoaudiologico.\",")
+
+    CONS_Printf(player, "  \"errores_detalle\": [")
+
+    if sesion.errores_detalle ~= nil and #sesion.errores_detalle > 0 then
+        for i = 1, #sesion.errores_detalle do
+            local errorDato = sesion.errores_detalle[i]
+            local coma = ","
+
+            if i == #sesion.errores_detalle then
+                coma = ""
+            end
+
+            CONS_Printf(player, "    { \"palabra\": \"" .. jsonTexto(errorDato.palabra) .. "\", \"tipo\": \"" .. jsonTexto(errorDato.tipo) .. "\" }" .. coma)
+        end
+    end
+
+    CONS_Printf(player, "  ],")
+
+    CONS_Printf(player, "  \"pares_detalle\": [")
+
+    if sesion.pares_detalle ~= nil and #sesion.pares_detalle > 0 then
+        for i = 1, #sesion.pares_detalle do
+            local detalle = sesion.pares_detalle[i]
+            local coma = ","
+
+            if i == #sesion.pares_detalle then
+                coma = ""
+            end
+
+            CONS_Printf(player, "    {")
+            CONS_Printf(player, "      \"par\": " .. tostring(detalle.numero or i) .. ",")
+            CONS_Printf(player, "      \"izquierda\": \"" .. jsonTexto(detalle.izquierda) .. "\",")
+            CONS_Printf(player, "      \"derecha\": \"" .. jsonTexto(detalle.derecha) .. "\",")
+            CONS_Printf(player, "      \"seleccion\": \"" .. jsonTexto(detalle.seleccion) .. "\",")
+            CONS_Printf(player, "      \"esperada\": \"" .. jsonTexto(detalle.esperado) .. "\",")
+            CONS_Printf(player, "      \"resultado\": \"" .. jsonTexto(detalle.resultado) .. "\"")
+            CONS_Printf(player, "    }" .. coma)
+        end
+    end
+
+    CONS_Printf(player, "  ]")
+    CONS_Printf(player, "}")
+    CONS_Printf(player, "========== COPIAR HASTA AQUI ==========")
+end)
 COM_AddCommand("fonocopia", function(player)
     CONS_Printf(player, "Usa el comando fonojson y copia el bloque entre:")
     CONS_Printf(player, "COPIAR DESDE AQUI / COPIAR HASTA AQUI")
@@ -2554,7 +2665,17 @@ local function fonoPorcentajeSesion()
         return 0
     end
 
-    return (sesion.correctos * 100) / sesion.intentos
+    local correctos = sesion.correctos or 0
+    local intentos = sesion.intentos or 0
+    local total = correctos * 100
+    local porcentaje = 0
+
+    while total >= intentos do
+        porcentaje = porcentaje + 1
+        total = total - intentos
+    end
+
+    return porcentaje
 end
 
 local function fonoResultadoDescriptivoPares(porcentaje)
@@ -2575,8 +2696,20 @@ mostrarReporteDescriptivo = function(player)
         return
     end
 
-    local porcentaje = fonoPorcentajeSesion()
-    local porcentajeTexto = string.format("%.0f", porcentaje)
+    local porcentaje = 0
+
+    if sesion ~= nil and sesion.intentos ~= nil and sesion.intentos > 0 then
+        local correctos = sesion.correctos or 0
+        local intentos = sesion.intentos or 0
+        local total = correctos * 100
+
+        while total >= intentos do
+            porcentaje = porcentaje + 1
+            total = total - intentos
+        end
+    end
+
+    local porcentajeTexto = tostring(porcentaje)
 
     CONS_Printf(player, "========== SONIC FONOKIDS ==========")
     CONS_Printf(player, "REPORTE DESCRIPTIVO NO CLINICO")
