@@ -2656,3 +2656,163 @@ COM_AddCommand("fonoparesdetalle", function(player)
     CONS_Printf(player, "======================================")
 end)
 
+
+
+-- ================================
+-- Sala guiada Sonic FonoKids
+-- ================================
+
+COM_AddCommand("fonosala", function(player)
+    if fonoLimpiarObjetosActivos ~= nil then
+        fonoLimpiarObjetosActivos(player)
+    end
+
+    CONS_Printf(player, "========== SALA SONIC FONOKIDS ==========")
+    CONS_Printf(player, "Bienvenido a la sala guiada del proyecto.")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "Esta sala organiza las actividades principales")
+    CONS_Printf(player, "para probar el mod de forma mas ordenada.")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "1) Conciencia fonologica:")
+    CONS_Printf(player, "   fonosala1 -> demo con silaba inicial MA")
+    CONS_Printf(player, "   fonopa2   -> actividad con silaba PA")
+    CONS_Printf(player, "   fonoba2   -> actividad con silaba BA")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "2) Vocabulario por categorias:")
+    CONS_Printf(player, "   fonosala2       -> demo con categoria ANIMALES")
+    CONS_Printf(player, "   fonocomida2     -> categoria COMIDAS")
+    CONS_Printf(player, "   fonotransporte2 -> categoria TRANSPORTES")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "3) Reportes:")
+    CONS_Printf(player, "   fonosala3        -> ayuda de reportes")
+    CONS_Printf(player, "   fonoreporte      -> reporte descriptivo")
+    CONS_Printf(player, "   fonoparesdetalle -> detalle de pares")
+    CONS_Printf(player, "   fonojson         -> datos estructurados para IA")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "Orden recomendado:")
+    CONS_Printf(player, "   1. fonosala")
+    CONS_Printf(player, "   2. fonosala1")
+    CONS_Printf(player, "   3. fonosala2")
+    CONS_Printf(player, "   4. fonosala3")
+    CONS_Printf(player, "=========================================")
+
+    if fonoSetHud ~= nil then
+        fonoSetHud(player, "SALA FONOKIDS", "USA fonosala1 o fonosala2", TICRATE * 10)
+    end
+end)
+
+COM_AddCommand("fonosala1", function(player)
+    CONS_Printf(player, "========== SALA 1: FONOLOGIA ==========")
+    CONS_Printf(player, "Actividad:")
+    CONS_Printf(player, "Escoger entre dos opciones la palabra que empieza con MA.")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "Ejemplo:")
+    CONS_Printf(player, "MANO / PATO")
+    CONS_Printf(player, "BALA / MAPA")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "El nino toca solo una opcion.")
+    CONS_Printf(player, "=======================================")
+
+    if fonoIniciarParesSilaba ~= nil then
+        fonoIniciarParesSilaba(player, "MA", {
+            {
+                izquierda = "mano",
+                derecha = "pato"
+            },
+            {
+                izquierda = "bala",
+                derecha = "mapa"
+            }
+        }, "SALA 1: Conciencia fonologica - silaba MA")
+    else
+        CONS_Printf(player, "No se encontro el sistema de pares fonologicos.")
+        CONS_Printf(player, "Prueba manualmente con: fonoma2")
+    end
+end)
+
+COM_AddCommand("fonosala2", function(player)
+    CONS_Printf(player, "========== SALA 2: VOCABULARIO ==========")
+    CONS_Printf(player, "Actividad:")
+    CONS_Printf(player, "Escoger entre dos opciones la palabra que pertenece")
+    CONS_Printf(player, "a la categoria ANIMALES.")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "Ejemplo:")
+    CONS_Printf(player, "GATO / MESA")
+    CONS_Printf(player, "AUTO / PERRO")
+    CONS_Printf(player, "SOPA / PATO")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "El nino toca solo una opcion.")
+    CONS_Printf(player, "=========================================")
+
+    if fonoIniciarParesCategoria ~= nil then
+        fonoIniciarParesCategoria(player, "animal", {
+            {
+                izquierda = "gato",
+                derecha = "mesa"
+            },
+            {
+                izquierda = "auto",
+                derecha = "perro"
+            },
+            {
+                izquierda = "sopa",
+                derecha = "pato"
+            }
+        }, "SALA 2: Vocabulario - categoria ANIMALES")
+    else
+        CONS_Printf(player, "No se encontro el sistema de pares de vocabulario.")
+        CONS_Printf(player, "Prueba manualmente con: fonovocab2")
+    end
+end)
+
+COM_AddCommand("fonosala3", function(player)
+    CONS_Printf(player, "========== SALA 3: REPORTES ==========")
+    CONS_Printf(player, "Despues de completar una actividad puedes usar:")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "fonoreporte")
+    CONS_Printf(player, "Muestra un reporte descriptivo no clinico.")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "fonoparesdetalle")
+    CONS_Printf(player, "Muestra que opciones fueron presentadas,")
+    CONS_Printf(player, "cual se selecciono y cual era la esperada.")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "fonojson")
+    CONS_Printf(player, "Entrega datos estructurados para IA.")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "Advertencia:")
+    CONS_Printf(player, "Los datos describen rendimiento dentro del juego.")
+    CONS_Printf(player, "No constituyen diagnostico fonoaudiologico.")
+    CONS_Printf(player, "La interpretacion debe realizarla una persona del area.")
+    CONS_Printf(player, "======================================")
+end)
+
+COM_AddCommand("fonosalademo", function(player)
+    CONS_Printf(player, "========== DEMO SALA FONOKIDS ==========")
+    CONS_Printf(player, "Orden recomendado para mostrar el proyecto:")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "1) fonosala")
+    CONS_Printf(player, "   Muestra la sala guiada.")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "2) fonosala1")
+    CONS_Printf(player, "   Prueba conciencia fonologica con silaba MA.")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "3) fonosala2")
+    CONS_Printf(player, "   Prueba vocabulario con categoria ANIMALES.")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "4) fonosala3")
+    CONS_Printf(player, "   Explica reportes y datos para IA.")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "5) fonojson")
+    CONS_Printf(player, "   Copia los datos finales de la sesion.")
+    CONS_Printf(player, "========================================")
+end)
+
+COM_AddCommand("fonosalalimpia", function(player)
+    if fonoLimpiarObjetosActivos ~= nil then
+        fonoLimpiarObjetosActivos(player)
+        CONS_Printf(player, "Sala limpiada correctamente.")
+    else
+        CONS_Printf(player, "No se encontro la funcion de limpieza.")
+    end
+end)
+
