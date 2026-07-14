@@ -1,0 +1,21 @@
+{
+  "proyecto": "Sonic FonoKids",
+  "tipo_reporte": "descriptivo_no_clinico",
+  "jugador_anonimo": "Nino_001",
+  "actividad": "eleccion_pares_silaba_MA",
+  "objetivo": "MA",
+  "nivel": "1",
+  "intentos_totales": 2,
+  "respuestas_correctas": 1,
+  "errores": 1,
+  "ayudas_usadas": 0,
+  "porcentaje_logro": 50,
+  "completado": true,
+  "advertencia": "Este reporte no constituye diagnostico fonoaudiologico.",
+  "errores_detalle": [
+    {
+      "palabra": "pato",
+      "tipo": "distractor_fonologico"
+    }
+  ]
+}

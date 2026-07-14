@@ -16,7 +16,7 @@ def clasificar_desempeno(porcentaje):
     return "desempeño bajo dentro de la actividad"
 
 
-def generar_observacion(porcentaje, errores, errores_detalle):
+def generar_observacion(porcentaje, errores):
     if errores == 0:
         return (
             "El desempeño dentro del juego muestra respuestas correctas en todos "
@@ -56,6 +56,21 @@ def generar_sugerencia(porcentaje):
     )
 
 
+def formatear_completado(valor):
+    if isinstance(valor, bool):
+        return "sí" if valor else "no"
+
+    texto = str(valor).strip().lower()
+    return "sí" if texto in {"true", "1", "si", "sí"} else "no"
+
+
+def describir_objetivo(actividad, objetivo):
+    if "vocabulario" in actividad.lower():
+        return f"Categoría trabajada: {objetivo}"
+
+    return f"Sílaba inicial trabajada: {objetivo}"
+
+
 def generar_reporte(datos):
     jugador = datos.get("jugador_anonimo", "Nino_001")
     actividad = datos.get("actividad", "actividad no especificada")
@@ -66,11 +81,11 @@ def generar_reporte(datos):
     errores = int(datos.get("errores", 0))
     ayudas = int(datos.get("ayudas_usadas", 0))
     porcentaje = float(datos.get("porcentaje_logro", 0))
-    completado = str(datos.get("completado", "false"))
+    completado = formatear_completado(datos.get("completado", False))
     errores_detalle = datos.get("errores_detalle", [])
 
     desempeno = clasificar_desempeno(porcentaje)
-    observacion = generar_observacion(porcentaje, errores, errores_detalle)
+    observacion = generar_observacion(porcentaje, errores)
     sugerencia = generar_sugerencia(porcentaje)
 
     lineas = []
@@ -82,7 +97,7 @@ def generar_reporte(datos):
     lineas.append(f"Jugador anónimo: {jugador}")
     lineas.append(f"Nivel: {nivel}")
     lineas.append(f"Actividad: {actividad}")
-    lineas.append(f"Objetivo trabajado: sílaba inicial {objetivo}")
+    lineas.append(describir_objetivo(actividad, objetivo))
     lineas.append(f"Actividad completada: {completado}")
     lineas.append("")
 
@@ -161,14 +176,18 @@ def main():
     if not ruta_entrada.exists():
         print(f"No se encontró el archivo de entrada: {ruta_entrada}")
         print("Crea un JSON en Reports/ o usa el comando fonojson dentro del juego.")
-        return
+        return 1
 
     try:
         datos = cargar_json(ruta_entrada)
     except json.JSONDecodeError as error:
         print("El archivo no tiene formato JSON válido.")
         print(error)
-        return
+        return 1
+
+    if not isinstance(datos, dict):
+        print("El JSON debe contener un objeto con los datos de una sesión.")
+        return 1
 
     reporte = generar_reporte(datos)
 
@@ -178,7 +197,8 @@ def main():
     print("Reporte generado correctamente.")
     print(f"Entrada: {ruta_entrada}")
     print(f"Salida: {ruta_salida}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

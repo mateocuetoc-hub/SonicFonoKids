@@ -75,7 +75,8 @@ SonicFonoKids/
 ├── Sprites/
 ├── Sounds/
 ├── Reports/
-│   └── prompt_reporte_ia.md
+│   ├── prompt_reporte_ia.md
+│   └── sesion_demo.json
 ├── Tools/
 │   └── generar_reporte.py
 ├── build.sh
@@ -126,6 +127,9 @@ cd ~/SRB2Mods/SonicFonoKids
 ./build.sh
 ```
 
+El build comprueba que `Lua/` contenga únicamente `main.lua`. Si encuentra
+otro archivo `.lua`, se detiene para evitar que SRB2 cargue comandos duplicados.
+
 El script genera el archivo:
 
 ```text
@@ -143,22 +147,11 @@ y lo copia automáticamente a la carpeta de addons de SRB2 Flatpak:
 ## Abrir Sonic Robo Blast 2
 
 ```bash
-flatpak run org.srb2.SRB2
+flatpak run org.srb2.SRB2 -file "$HOME/.var/app/org.srb2.SRB2/.srb2/addons/SonicFonoKids.pk3"
 ```
 
-Dentro del juego:
-
-```text
-Addons
-↓
-addons/
-↓
-SonicFonoKids.pk3
-↓
-Enter
-```
-
-Luego entrar a una partida normal.
+Cuando se inicia con `-file`, no se debe cargar el mismo PK3 nuevamente desde
+el menú **Addons**, porque SRB2 intentaría agregar el mod dos veces.
 
 ---
 
@@ -170,7 +163,7 @@ Desde la terminal:
 cd ~/SRB2Mods/SonicFonoKids
 git pull
 ./build.sh
-flatpak run org.srb2.SRB2
+flatpak run org.srb2.SRB2 -file "$HOME/.var/app/org.srb2.SRB2/.srb2/addons/SonicFonoKids.pk3"
 ```
 
 Dentro del juego:
@@ -501,7 +494,9 @@ Muestra un bloque estructurado como:
   "intentos_totales": 4,
   "respuestas_correctas": 2,
   "errores": 2,
+  "ayudas_usadas": 0,
   "porcentaje_logro": 50,
+  "completado": true,
   "errores_detalle": [
     { "palabra": "pato", "tipo": "distractor_fonologico" },
     { "palabra": "bala", "tipo": "distractor_fonologico" }
@@ -631,10 +626,9 @@ git push
 
 Próximas mejoras posibles:
 
-- crear sprites propios para cada objeto;
+- reemplazar los sprites provisionales por ilustraciones infantiles;
 - agregar más sílabas;
 - agregar actividades de rimas;
-- agregar actividades de vocabulario;
 - mejorar la interfaz visual;
 - generar reportes más completos;
 - exportar datos de sesión de forma más automática;
@@ -651,6 +645,5 @@ Proyecto en desarrollo experimental.
 Versión actual aproximada:
 
 ```text
-Sonic FonoKids v0.3 experimental
+Sonic FonoKids v0.0.3 experimental
 ```
-

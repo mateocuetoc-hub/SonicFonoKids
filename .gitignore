@@ -8,6 +8,8 @@ Backups/
 # Archivos temporales
 *.tmp
 *.swp
+__pycache__/
+*.pyc
 
 # PK3 generado
 ../SonicFonoKids.pk3
