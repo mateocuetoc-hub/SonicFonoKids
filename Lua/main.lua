@@ -107,37 +107,12 @@ addHook("PlayerSpawn", function(player)
     end
 
     player.rings = 20
-    player.fono_lastRings = player.rings
 
     CONS_Printf(player, "====================================")
     CONS_Printf(player, "Sonic FonoKids activo")
     CONS_Printf(player, "Objetivo: trabajar silaba inicial " .. sesion.objetivo)
     CONS_Printf(player, "Usa fononivel1auto para iniciar la actividad educativa.")
     CONS_Printf(player, "====================================")
-end)
-
--- Modo antiguo de anillos desactivado.
--- Ahora las respuestas se registran con objetos educativos y comandos.
-local contarAnillosComoCorrectos = false
-
-addHook("ThinkFrame", function()
-    for player in players.iterate do
-        if player.mo then
-            if player.fono_lastRings == nil then
-                player.fono_lastRings = player.rings
-            end
-
-            if contarAnillosComoCorrectos == true and player.rings > player.fono_lastRings then
-                local ganados = player.rings - player.fono_lastRings
-
-                for i = 1, ganados do
-                    registrarCorrecto(player, "mano")
-                end
-            end
-
-            player.fono_lastRings = player.rings
-        end
-    end
 end)
 
 COM_AddCommand("fonostatus", function(player)
@@ -171,7 +146,6 @@ end)
 COM_AddCommand("fonoreset", function(player)
     iniciarSesion()
     player.rings = 20
-    player.fono_lastRings = player.rings
     CONS_Printf(player, "Sesion reiniciada.")
 end)
 
@@ -585,6 +559,7 @@ local function crearObjetoFono(player, palabra, indice)
     objetosFono[objeto] = clave
 
     CONS_Printf(player, "Objeto educativo creado: " .. clave)
+    return objeto
 end
 
 local function procesarObjetoFono(special, toucher)
@@ -700,18 +675,6 @@ local function revisarCierreActividad(player)
     end
 end
 
-local registrarCorrectoBase = registrarCorrecto
-registrarCorrecto = function(player, palabra)
-    registrarCorrectoBase(player, palabra)
-    revisarCierreActividad(player)
-end
-
-local registrarErrorBase = registrarError
-registrarError = function(player, palabra, tipo)
-    registrarErrorBase(player, palabra, tipo)
-    revisarCierreActividad(player)
-end
-
 COM_AddCommand("fononivel1auto", function(player)
     if fonoLimpiarObjetosActivos ~= nil then
         fonoLimpiarObjetosActivos(player)
@@ -802,26 +765,6 @@ local function crearSiguienteObjetoSecuencial(player)
     CONS_Printf(player, "=====================================")
 
     crearObjetoFono(player, palabra, 4)
-end
-
-local registrarCorrectoSecBase = registrarCorrecto
-registrarCorrecto = function(player, palabra)
-    registrarCorrectoSecBase(player, palabra)
-
-    if nivelSecuencial.activo == true and sesion.completado ~= true then
-        nivelSecuencial.indice = nivelSecuencial.indice + 1
-        crearSiguienteObjetoSecuencial(player)
-    end
-end
-
-local registrarErrorSecBase = registrarError
-registrarError = function(player, palabra, tipo)
-    registrarErrorSecBase(player, palabra, tipo)
-
-    if nivelSecuencial.activo == true and sesion.completado ~= true then
-        nivelSecuencial.indice = nivelSecuencial.indice + 1
-        crearSiguienteObjetoSecuencial(player)
-    end
 end
 
 COM_AddCommand("fononivel1seq", function(player)
@@ -1148,11 +1091,7 @@ end)
 -- ================================
 
 local function fonoPorcentajeSeguro()
-    if sesion == nil or sesion.intentos == nil or sesion.intentos == 0 then
-        return 0
-    end
-
-    return (sesion.correctos * 100) / sesion.intentos
+    return obtenerPorcentajeLogro()
 end
 
 local function fonoMostrarJSON(player)
@@ -1171,7 +1110,7 @@ local function fonoMostrarJSON(player)
     CONS_Printf(player, '  "errores": ' .. tostring(sesion.errores) .. ',')
     CONS_Printf(player, '  "ayudas_usadas": ' .. tostring(sesion.ayudas) .. ',')
     CONS_Printf(player, '  "porcentaje_logro": ' .. tostring(porcentaje) .. ',')
-    CONS_Printf(player, '  "completado": "' .. tostring(sesion.completado) .. '",')
+    CONS_Printf(player, '  "completado": ' .. tostring(sesion.completado == true) .. ',')
     CONS_Printf(player, '  "advertencia": "Este reporte no constituye diagnostico fonoaudiologico.",')
     CONS_Printf(player, '  "errores_detalle": [')
 
@@ -1288,59 +1227,7 @@ local function fonoConfigurarBancoPorCategoria(categoriaObjetivo)
     end
 end
 
-local function crearSiguienteObjetoVocabulario(player)
-    if vocabSecuencial.activo == false then
-        return
-    end
-
-    if vocabSecuencial.indice > #vocabSecuencial.palabras then
-        vocabSecuencial.activo = false
-        return
-    end
-
-    local palabra = vocabSecuencial.palabras[vocabSecuencial.indice]
-    local dato = bancoPalabras[palabra]
-
-    CONS_Printf(player, "========== VOCABULARIO FONOKIDS ==========")
-    CONS_Printf(player, "Objeto " .. tostring(vocabSecuencial.indice) .. " de " .. tostring(#vocabSecuencial.palabras))
-    CONS_Printf(player, "Palabra actual: " .. tostring(palabra))
-    CONS_Printf(player, "Objetivo: toca solo ANIMALES.")
-
-    if dato ~= nil and dato.categoria == vocabSecuencial.categoriaObjetivo then
-        CONS_Printf(player, "Esta palabra pertenece a la categoria ANIMALES.")
-    else
-        CONS_Printf(player, "Esta palabra NO pertenece a la categoria ANIMALES.")
-    end
-
-    CONS_Printf(player, "Toca el objeto para registrar la respuesta.")
-    CONS_Printf(player, "==========================================")
-
-    if fonoSetHud ~= nil then
-        fonoSetHud(player, "PALABRA: " .. string.upper(tostring(palabra)), "CATEGORIA: ANIMALES", TICRATE * 8)
-    end
-
-    crearObjetoFono(player, palabra, 4)
-end
-
-local registrarCorrectoVocabBase = registrarCorrecto
-registrarCorrecto = function(player, palabra)
-    registrarCorrectoVocabBase(player, palabra)
-
-    if vocabSecuencial.activo == true and sesion.completado ~= true then
-        vocabSecuencial.indice = vocabSecuencial.indice + 1
-        crearSiguienteObjetoVocabulario(player)
-    end
-end
-
-local registrarErrorVocabBase = registrarError
-registrarError = function(player, palabra, tipo)
-    registrarErrorVocabBase(player, palabra, tipo)
-
-    if vocabSecuencial.activo == true and sesion.completado ~= true then
-        vocabSecuencial.indice = vocabSecuencial.indice + 1
-        crearSiguienteObjetoVocabulario(player)
-    end
-end
+local crearSiguienteObjetoVocabulario
 
 COM_AddCommand("fonovocab", function(player)
     if fonoLimpiarObjetosActivos ~= nil then
@@ -1811,13 +1698,17 @@ end
 -- ================================
 
 local fonoProgramarSiguientePar
+local crearSiguienteParFono
 
 local fonoPares = {
     activo = false,
     indice = 1,
     objetivo = "MA",
     pares = {},
-    objetos = {}
+    objetos = {},
+    esperandoSiguiente = false,
+    ticsEspera = 0,
+    playerEspera = nil
 }
 
 local function fonoLimpiarObjetosPares()
@@ -1838,6 +1729,9 @@ local function fonoLimpiarObjetosPares()
     end
 
     fonoPares.objetos = {}
+    fonoPares.esperandoSiguiente = false
+    fonoPares.ticsEspera = 0
+    fonoPares.playerEspera = nil
 end
 
 -- Extendemos la limpieza general para que tambien corte el modo de pares.
@@ -1897,45 +1791,6 @@ local function crearObjetoFonoPar(player, palabra, lado)
     end
 
     return objeto
-end
-
-local function crearSiguienteParFono(player)
-    if fonoPares.activo == false then
-        return
-    end
-
-    if fonoPares.indice > #fonoPares.pares then
-        fonoPares.activo = false
-        return
-    end
-
-    fonoLimpiarObjetosPares()
-
-    local par = fonoPares.pares[fonoPares.indice]
-    local izquierda = par.izquierda
-    local derecha = par.derecha
-
-    CONS_Printf(player, "========== ELECCION FONOKIDS ==========")
-    CONS_Printf(player, "Par " .. tostring(fonoPares.indice) .. " de " .. tostring(#fonoPares.pares))
-    CONS_Printf(player, "Objetivo: escoge una palabra que empiece con " .. tostring(fonoPares.objetivo) .. ".")
-    CONS_Printf(player, " ")
-    CONS_Printf(player, "Izquierda: " .. string.upper(tostring(izquierda)))
-    CONS_Printf(player, "Derecha: " .. string.upper(tostring(derecha)))
-    CONS_Printf(player, " ")
-    CONS_Printf(player, "Toca solo una opcion.")
-    CONS_Printf(player, "=======================================")
-
-    if fonoSetHud ~= nil then
-        fonoSetHud(
-            player,
-            "BUSCA: " .. tostring(fonoPares.objetivo),
-            "IZQ: " .. string.upper(tostring(izquierda)) .. " | DER: " .. string.upper(tostring(derecha)),
-            TICRATE * 10
-        )
-    end
-
-    crearObjetoFonoPar(player, izquierda, 1)
-    crearObjetoFonoPar(player, derecha, -1)
 end
 
 local function fonoIniciarParesMA(player)
@@ -2061,18 +1916,6 @@ end)
 -- Modo pares para vocabulario/categorias
 -- ================================
 
-local function fonoParesNombreCategoria(categoria)
-    if categoria == "animal" then
-        return "ANIMALES"
-    elseif categoria == "comida" then
-        return "COMIDAS"
-    elseif categoria == "transporte" then
-        return "TRANSPORTES"
-    end
-
-    return string.upper(tostring(categoria))
-end
-
 -- Reemplazamos la visualizacion del par por una version que sirve
 -- tanto para silabas como para categorias.
 crearSiguienteParFono = function(player)
@@ -2096,7 +1939,7 @@ crearSiguienteParFono = function(player)
     local lineaHud2 = ""
 
     if fonoPares.modo == "categoria" then
-        local categoriaBonita = fonoParesNombreCategoria(fonoPares.categoriaObjetivo)
+        local categoriaBonita = fonoNombreCategoriaBonito(fonoPares.categoriaObjetivo)
 
         textoObjetivo = "escoge una palabra de la categoria " .. categoriaBonita .. "."
         lineaHud1 = "BUSCA: " .. categoriaBonita
@@ -2135,7 +1978,7 @@ local function fonoIniciarParesCategoria(player, categoria, pares, nombreNivel)
     fonoConfigurarBancoPorCategoria(categoria)
     iniciarSesion()
 
-    local categoriaBonita = fonoParesNombreCategoria(categoria)
+    local categoriaBonita = fonoNombreCategoriaBonito(categoria)
 
     sesion.actividad = "eleccion_pares_vocabulario_" .. tostring(categoria)
     sesion.objetivo = categoriaBonita
@@ -2546,15 +2389,7 @@ registrarError = function(player, palabra, tipo)
 end
 
 local function fonoPorcentajeSesion()
-    if sesion == nil then
-        return 0
-    end
-
-    if sesion.intentos == nil or sesion.intentos <= 0 then
-        return 0
-    end
-
-    return (sesion.correctos * 100) / sesion.intentos
+    return obtenerPorcentajeLogro()
 end
 
 local function fonoResultadoDescriptivoPares(porcentaje)
@@ -2837,7 +2672,9 @@ local fonoSpriteFrames = {
     bus = M,      -- M
     tren = N,     -- N
     barco = O,    -- O
-    banco = P     -- P
+    banco = P,    -- P
+    pala = Q,     -- Q
+    papa = R      -- R
 }
 
 local fonoSpriteStates
@@ -2899,6 +2736,7 @@ COM_AddCommand("fonosprites", function(player)
     CONS_Printf(player, "gato, mesa, auto, perro")
     CONS_Printf(player, "sopa, pan, queso, manzana")
     CONS_Printf(player, "bus, tren, barco, banco")
+    CONS_Printf(player, "pala, papa")
     CONS_Printf(player, "======================================")
 end)
 
@@ -2926,7 +2764,9 @@ freeslot(
     "S_FONO_BUS",
     "S_FONO_TREN",
     "S_FONO_BARCO",
-    "S_FONO_BANCO"
+    "S_FONO_BANCO",
+    "S_FONO_PALA",
+    "S_FONO_PAPA"
 )
 
 states[S_FONO_MANO]    = {sprite = SPR_FONI, frame = A,  tics = -1, nextstate = S_FONO_MANO}
@@ -2945,6 +2785,8 @@ states[S_FONO_BUS]     = {sprite = SPR_FONI, frame = M, tics = -1, nextstate = S
 states[S_FONO_TREN]    = {sprite = SPR_FONI, frame = N, tics = -1, nextstate = S_FONO_TREN}
 states[S_FONO_BARCO]   = {sprite = SPR_FONI, frame = O, tics = -1, nextstate = S_FONO_BARCO}
 states[S_FONO_BANCO]   = {sprite = SPR_FONI, frame = P, tics = -1, nextstate = S_FONO_BANCO}
+states[S_FONO_PALA]    = {sprite = SPR_FONI, frame = Q, tics = -1, nextstate = S_FONO_PALA}
+states[S_FONO_PAPA]    = {sprite = SPR_FONI, frame = R, tics = -1, nextstate = S_FONO_PAPA}
 
 fonoSpriteStates = {
     mano = S_FONO_MANO,
@@ -2962,135 +2804,10 @@ fonoSpriteStates = {
     bus = S_FONO_BUS,
     tren = S_FONO_TREN,
     barco = S_FONO_BARCO,
-    banco = S_FONO_BANCO
+    banco = S_FONO_BANCO,
+    pala = S_FONO_PALA,
+    papa = S_FONO_PAPA
 }
-
-
-
--- ================================
--- Forzar sprites visuales FonoKids
--- ================================
-
-local function fonoForzarSpriteObjeto(objeto, palabra)
-    if objeto == nil then
-        return
-    end
-
-    if objeto.valid == false then
-        return
-    end
-
-    if palabra == nil then
-        return
-    end
-
-    local clave = tostring(palabra)
-    local estado = nil
-    local frame = nil
-
-    if fonoSpriteStates ~= nil then
-        estado = fonoSpriteStates[clave]
-    end
-
-    if fonoSpriteFrames ~= nil then
-        frame = fonoSpriteFrames[clave]
-    end
-
-    if estado ~= nil then
-        objeto.state = estado
-    end
-
-    if frame ~= nil then
-        objeto.sprite = SPR_FONI
-        objeto.frame = frame
-    end
-
-    objeto.scale = FRACUNIT * 3 / 2
-    objeto.tics = -1
-end
-
-addHook("ThinkFrame", function()
-    if objetosFono == nil then
-        return
-    end
-
-    for objeto, palabra in pairs(objetosFono) do
-        if objeto ~= nil and objeto.valid then
-            fonoForzarSpriteObjeto(objeto, palabra)
-        end
-    end
-end)
-
-COM_AddCommand("fonospritecheck", function(player)
-    CONS_Printf(player, "========== SPRITE CHECK ==========")
-
-    if SPR_FONI ~= nil then
-        CONS_Printf(player, "SPR_FONI existe.")
-    else
-        CONS_Printf(player, "SPR_FONI NO existe.")
-    end
-
-    if fonoSpriteStates ~= nil then
-        CONS_Printf(player, "fonoSpriteStates existe.")
-    else
-        CONS_Printf(player, "fonoSpriteStates NO existe.")
-    end
-
-    if objetosFono ~= nil then
-        local total = 0
-
-        for objeto, palabra in pairs(objetosFono) do
-            if objeto ~= nil and objeto.valid then
-                total = total + 1
-                CONS_Printf(player, "Objeto activo: " .. tostring(palabra))
-            end
-        end
-
-        CONS_Printf(player, "Objetos activos: " .. tostring(total))
-    else
-        CONS_Printf(player, "objetosFono NO existe.")
-    end
-
-    CONS_Printf(player, "==================================")
-end)
-
-
-
--- ================================
--- Forzado por MobjThinker FonoKids
--- ================================
-
-addHook("MobjThinker", function(objeto)
-    if objetosFono == nil then
-        return
-    end
-
-    if objeto == nil or objeto.valid == false then
-        return
-    end
-
-    local palabra = objetosFono[objeto]
-
-    if palabra == nil then
-        return
-    end
-
-    local clave = tostring(palabra)
-    local frame = nil
-
-    if fonoSpriteFrames ~= nil then
-        frame = fonoSpriteFrames[clave]
-    end
-
-    if frame == nil then
-        return
-    end
-
-    objeto.sprite = SPR_FONI
-    objeto.frame = frame
-    objeto.scale = FRACUNIT * 3 / 2
-    objeto.tics = -1
-end, MT_FONO_OBJETO)
 
 
 
@@ -3137,4 +2854,3 @@ COM_AddCommand("fonospritecheck", function(player)
 
     CONS_Printf(player, "==================================")
 end)
-
