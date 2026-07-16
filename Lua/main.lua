@@ -1757,23 +1757,29 @@ local function crearObjetoFonoPar(player, palabra, lado)
         return nil
     end
 
-    -- Vitrina frontal:
-    -- Los dos objetos aparecen DELANTE de Sonic,
-    -- apenas separados entre ellos.
-    local distanciaFrente = 170 * FRACUNIT
-    local separacionLateral = 55 * FRACUNIT
-    local altura = 32 * FRACUNIT
+    -- La disposicion se calcula con la vista para que las tarjetas
+    -- siempre aparezcan una al lado de la otra en pantalla.
+    local distanciaFrente = 120 * FRACUNIT
+    local separacionLateral = 72 * FRACUNIT
+    local altura = 36 * FRACUNIT
 
     local anguloFrente = player.mo.angle
-    local anguloLado = player.mo.angle + ANGLE_90
 
-    -- Punto base frente a Sonic
-    local xBase = player.mo.x + FixedMul(cos(anguloFrente), distanciaFrente)
-    local yBase = player.mo.y + FixedMul(sin(anguloFrente), distanciaFrente)
+    if camera ~= nil and camera.angle ~= nil then
+        anguloFrente = camera.angle
+    end
 
-    -- Pequeno desplazamiento lateral para formar dos opciones
-    local x = xBase + FixedMul(cos(anguloLado), separacionLateral * lado)
-    local y = yBase + FixedMul(sin(anguloLado), separacionLateral * lado)
+    local anguloLado = anguloFrente + ANGLE_90
+
+    local xBase = player.mo.x
+        + FixedMul(cos(anguloFrente), distanciaFrente)
+    local yBase = player.mo.y
+        + FixedMul(sin(anguloFrente), distanciaFrente)
+
+    local x = xBase
+        + FixedMul(cos(anguloLado), separacionLateral * lado)
+    local y = yBase
+        + FixedMul(sin(anguloLado), separacionLateral * lado)
     local z = player.mo.z + altura
 
     local objeto = P_SpawnMobj(x, y, z, MT_FONO_OBJETO)
@@ -1786,7 +1792,6 @@ local function crearObjetoFonoPar(player, palabra, lado)
         end
 
         table.insert(fonoPares.objetos, objeto)
-
         CONS_Printf(player, "Objeto educativo creado: " .. tostring(palabra))
     end
 
@@ -2024,8 +2029,8 @@ COM_AddCommand("fonovocab2", function(player)
             derecha = "perro"
         },
         {
-            izquierda = "sopa",
-            derecha = "pato"
+            izquierda = "pato",
+            derecha = "sopa"
         }
     }, "MODO PARES: Categoria ANIMALES")
 end)
@@ -2077,8 +2082,8 @@ COM_AddCommand("fonodemovocab2", function(player)
             derecha = "perro"
         },
         {
-            izquierda = "sopa",
-            derecha = "pato"
+            izquierda = "pato",
+            derecha = "sopa"
         }
     }, "DEMO PARES: Vocabulario - ANIMALES")
 end)
@@ -2411,7 +2416,7 @@ mostrarReporteDescriptivo = function(player)
     end
 
     local porcentaje = fonoPorcentajeSesion()
-    local porcentajeTexto = string.format("%.0f", porcentaje)
+    local porcentajeTexto = tostring(porcentaje)
 
     CONS_Printf(player, "========== SONIC FONOKIDS ==========")
     CONS_Printf(player, "REPORTE DESCRIPTIVO NO CLINICO")
@@ -2659,7 +2664,7 @@ end)
 local fonoSpriteFrames = {
     mano = A,      -- A
     mapa = B,      -- B
-    pato = C,      -- C
+    pato = S,      -- S
     bala = D,      -- D
     gato = E,      -- E
     mesa = F,      -- F
@@ -2771,7 +2776,7 @@ freeslot(
 
 states[S_FONO_MANO]    = {sprite = SPR_FONI, frame = A,  tics = -1, nextstate = S_FONO_MANO}
 states[S_FONO_MAPA]    = {sprite = SPR_FONI, frame = B,  tics = -1, nextstate = S_FONO_MAPA}
-states[S_FONO_PATO]    = {sprite = SPR_FONI, frame = C,  tics = -1, nextstate = S_FONO_PATO}
+states[S_FONO_PATO]    = {sprite = SPR_FONI, frame = S,  tics = -1, nextstate = S_FONO_PATO}
 states[S_FONO_BALA]    = {sprite = SPR_FONI, frame = D,  tics = -1, nextstate = S_FONO_BALA}
 states[S_FONO_GATO]    = {sprite = SPR_FONI, frame = E,  tics = -1, nextstate = S_FONO_GATO}
 states[S_FONO_MESA]    = {sprite = SPR_FONI, frame = F,  tics = -1, nextstate = S_FONO_MESA}
