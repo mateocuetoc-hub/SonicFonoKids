@@ -2674,7 +2674,7 @@ local fonoSpriteFrames = {
     pan = J,       -- J
     queso = K,    -- K
     manzana = L,  -- L
-    bus = M,      -- M
+    bus = T,      -- T
     tren = N,     -- N
     barco = O,    -- O
     banco = P,    -- P
@@ -2786,7 +2786,7 @@ states[S_FONO_SOPA]    = {sprite = SPR_FONI, frame = I,  tics = -1, nextstate = 
 states[S_FONO_PAN]     = {sprite = SPR_FONI, frame = J,  tics = -1, nextstate = S_FONO_PAN}
 states[S_FONO_QUESO]   = {sprite = SPR_FONI, frame = K, tics = -1, nextstate = S_FONO_QUESO}
 states[S_FONO_MANZANA] = {sprite = SPR_FONI, frame = L, tics = -1, nextstate = S_FONO_MANZANA}
-states[S_FONO_BUS]     = {sprite = SPR_FONI, frame = M, tics = -1, nextstate = S_FONO_BUS}
+states[S_FONO_BUS]     = {sprite = SPR_FONI, frame = T, tics = -1, nextstate = S_FONO_BUS}
 states[S_FONO_TREN]    = {sprite = SPR_FONI, frame = N, tics = -1, nextstate = S_FONO_TREN}
 states[S_FONO_BARCO]   = {sprite = SPR_FONI, frame = O, tics = -1, nextstate = S_FONO_BARCO}
 states[S_FONO_BANCO]   = {sprite = SPR_FONI, frame = P, tics = -1, nextstate = S_FONO_BANCO}
