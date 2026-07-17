@@ -2859,3 +2859,75 @@ COM_AddCommand("fonospritecheck", function(player)
 
     CONS_Printf(player, "==================================")
 end)
+
+
+-- ==========================================
+-- COMPATIBILIDAD DE SPRITES 3D FONOKIDS
+-- ==========================================
+-- Los PNG son de 96x96. Se fuerza explícitamente:
+-- centro horizontal = 48, base vertical = 96,
+-- opacidad completa y estado visual permanente.
+
+addHook("MobjThinker", function(objeto)
+    if objeto == nil or objeto.valid == false then
+        return
+    end
+
+    local palabra = objeto.fono_palabra
+
+    if palabra == nil and objetosFono ~= nil then
+        palabra = objetosFono[objeto]
+    end
+
+    if palabra == nil then
+        return
+    end
+
+    local estado = nil
+    local frame = nil
+
+    if fonoSpriteStates ~= nil then
+        estado = fonoSpriteStates[palabra]
+    end
+
+    if fonoSpriteFrames ~= nil then
+        frame = fonoSpriteFrames[palabra]
+    end
+
+    if estado ~= nil and objeto.state ~= estado then
+        P_SetMobjStateNF(objeto, estado)
+    end
+
+    if frame ~= nil then
+        objeto.sprite = SPR_FONI
+        objeto.frame = frame|FF_FULLBRIGHT
+    end
+
+    -- Visibilidad completa.
+    objeto.flags = (objeto.flags|MF_NOGRAVITY) & ~MF_NOSECTOR
+    objeto.flags2 = objeto.flags2 & ~MF2_DONTDRAW
+    objeto.alpha = FRACUNIT
+    objeto.blendmode = AST_COPY
+    objeto.dispoffset = 10
+
+    -- Anclaje explícito para PNG de 96x96:
+    -- centro horizontal y base inferior del dibujo.
+    objeto.renderflags = RF_ABSOLUTEOFFSETS
+    objeto.spritexoffset = 48*FRACUNIT
+    objeto.spriteyoffset = 96*FRACUNIT
+    objeto.spritexscale = FRACUNIT
+    objeto.spriteyscale = FRACUNIT
+
+    objeto.scale = FRACUNIT*3/2
+    objeto.tics = -1
+    objeto.fuse = 0
+    objeto.drawonlyforplayer = nil
+    objeto.dontdrawforviewmobj = nil
+
+    -- Evitar que quede debajo del terreno.
+    local alturaSegura = objeto.floorz + 36*FRACUNIT
+
+    if objeto.z < alturaSegura then
+        objeto.z = alturaSegura
+    end
+end, MT_FONO_OBJETO)
