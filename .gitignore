@@ -18,3 +18,7 @@ SonicFonoKids.pk3
 # Logs
 *.log
 Maps/*.dbs
+
+# Respaldos locales
+build.sh.bak-*
+Maps/*.backup*
