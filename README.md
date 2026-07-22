@@ -1,82 +1,116 @@
 # Sonic FonoKids
 
-**Sonic FonoKids** es un mod educativo experimental para **Sonic Robo Blast 2**, orientado a actividades lúdicas de apoyo fonoaudiológico infantil.
+**Sonic FonoKids** es un mod educativo experimental para **Sonic Robo Blast 2 (SRB2)** que transforma actividades de conciencia fonológica y vocabulario en interacciones simples dentro del juego.
 
-El proyecto busca unir **videojuegos, programación, educación, datos e ideas de Fonoaudiología** mediante actividades simples dentro de SRB2, principalmente enfocadas en conciencia fonológica y reconocimiento de sílabas iniciales.
+El proyecto combina programación y Fonoaudiología para construir una experiencia infantil clara, positiva y fácil de probar. Actualmente permite presentar pictogramas, escoger entre dos alternativas, registrar respuestas y generar reportes descriptivos de la sesión.
 
-> Este proyecto **no diagnostica**, **no reemplaza a una fonoaudióloga** y **no entrega conclusiones clínicas**.  
-> Los reportes solo organizan datos del juego para que una persona del área fonoaudiológica pueda revisarlos e interpretarlos.
+> [!IMPORTANT]
+> Sonic FonoKids no diagnostica, no reemplaza una evaluación fonoaudiológica y no entrega conclusiones clínicas. Los resultados describen únicamente lo ocurrido dentro del videojuego y deben ser interpretados por una persona formada en el área.
 
----
+## Estado actual
 
-## Objetivo del proyecto
+Versión del mod: **v0.0.3 experimental**  
+Última actualización del README: **22 de julio de 2026**
 
-Crear una experiencia educativa en Sonic Robo Blast 2 donde niños puedan practicar habilidades relacionadas con:
+| Área | Estado | Avance disponible |
+|---|---:|---|
+| Carga del mod | ✅ Probado | PK3 cargable en SRB2 mediante Flatpak |
+| Actividades fonológicas | ✅ Funcional | Sílabas iniciales `MA`, `PA` y `BA` |
+| Elección entre pares | ✅ Funcional | Dos pictogramas simultáneos con alternancia de lado correcto |
+| Vocabulario | ✅ Funcional | Categorías animales, comidas y transportes |
+| HUD y feedback | ✅ Funcional | Objetivo, alternativas, aciertos, errores e intentos |
+| Pictogramas | ✅ Integrados | 18 palabras con sprites propios |
+| Reportes | ✅ Funcional | Reporte en consola, detalle por par y salida tipo JSON |
+| Herramienta externa | ✅ Funcional | Generador de reporte `.txt` en Python |
+| Mapa propio | 🧪 Bosquejo jugable | `MAP01.wad` con cuatro salas y tres pasillos, sin enemigos ni precipicios |
+| Integración automática al mapa | ⏳ Pendiente | Las actividades todavía se inician mediante comandos de consola |
+
+## Objetivos educativos
+
+El proyecto está pensado para practicar de forma lúdica:
 
 - conciencia fonológica;
 - identificación de sílabas iniciales;
-- discriminación de palabras;
-- vocabulario;
+- discriminación entre palabra objetivo y distractor;
+- reconocimiento de vocabulario por categorías;
 - seguimiento de instrucciones simples;
-- atención a estímulos visuales y auditivos.
+- atención a estímulos visuales;
+- elección entre dos alternativas.
 
-El juego registra datos básicos de desempeño, como:
+Durante cada actividad se registran intentos, respuestas correctas, errores, ayudas, porcentaje de logro y detalle de las selecciones.
 
-- intentos totales;
-- respuestas correctas;
-- errores;
-- tipo de error;
-- ayudas utilizadas;
-- porcentaje de logro;
-- actividad completada o no.
+## Funcionalidades implementadas
 
-Luego esos datos pueden usarse para generar reportes descriptivos no clínicos.
+### Actividades de sílaba inicial
 
----
+- `fonoma2`: escoger la palabra que comienza con `MA`.
+- `fonopa2`: escoger la palabra que comienza con `PA`.
+- `fonoba2`: escoger la palabra que comienza con `BA`.
+- `fonoma`, `fonopa` y `fonoba`: versiones secuenciales de las actividades.
 
-## Estado actual del proyecto
+En el modo de pares aparecen dos opciones al mismo tiempo. La respuesta correcta cambia de lado entre ejercicios para evitar que el jugador aprenda a elegir siempre la misma posición.
 
-Actualmente Sonic FonoKids incluye:
+### Actividades de vocabulario
 
-- addon cargable en Sonic Robo Blast 2;
-- script `build.sh` para generar automáticamente el archivo `.pk3`;
-- banco de palabras;
-- objetos educativos tocables dentro del juego;
-- nivel automático;
-- nivel secuencial;
-- niveles por sílaba: `MA`, `PA` y `BA`;
-- HUD visual dentro del juego;
-- feedback infantil;
-- reporte descriptivo dentro de SRB2;
-- salida tipo JSON para IA;
-- generador externo de reportes en Python;
-- plantilla de prompt para generar reportes con IA.
+- `fonovocab2`: escoger animales.
+- `fonocomida2`: escoger comidas.
+- `fonotransporte2`: escoger medios de transporte.
+- `fonovocab`, `fonocomida` y `fonotransporte`: versiones secuenciales.
 
----
+### Pictogramas integrados
 
-## Tecnologías usadas
+El banco visual actual incluye:
 
-- Sonic Robo Blast 2
-- Lua
-- PK3
-- Linux Mint
-- Git / GitHub
-- Python 3
+```text
+mano, mapa, pato, bala, gato, mesa, auto, perro, sopa,
+pan, queso, manzana, bus, tren, barco, banco, pala y papa
+```
 
----
+Los objetos aparecen frente al jugador, son tocables y entregan feedback inmediato. El comando `fonospritecheck` permite comprobar los sprites activos durante el desarrollo.
 
-## Estructura del proyecto
+### Sala y mapa educativo
+
+`Maps/MAP01.wad` contiene un primer bosquejo original y jugable con:
+
+- una sala de inicio;
+- una sala para sílabas iniciales;
+- una sala para vocabulario;
+- una sala final para reportes;
+- tres pasillos de conexión;
+- inicio de jugador y nodos BSP válidos;
+- piso plano, espacios amplios, sin enemigos y sin precipicios.
+
+El diseño está pensado como base editable. La geometría ya fue probada dentro de SRB2, pero la decoración, señalética y activación automática de actividades siguen pendientes.
+
+## Tecnologías
+
+- **Sonic Robo Blast 2 2.2.x** como motor del juego;
+- **Lua** para la lógica, comandos, actividades, HUD y registro de datos;
+- **SOC** para definiciones compatibles con SRB2;
+- **PNG / sprites `FONI*`** para los pictogramas;
+- **WAD** para `MAP01`;
+- **PK3** como formato distribuible del mod;
+- **Python 3** para generar reportes externos;
+- **Bash** para automatizar la compilación;
+- **Git y GitHub** para control de versiones;
+- **Linux Mint**, **Flatpak**, **Wine** y **Zone Builder** en el entorno de desarrollo del mapa.
+
+## Estructura del repositorio
 
 ```text
 SonicFonoKids/
+├── Docs/
+│   └── mapa-fonokids.md
 ├── Lua/
 │   └── main.lua
-├── SOC/
-├── Sprites/
-├── Sounds/
+├── Maps/
+│   └── MAP01.wad
 ├── Reports/
 │   ├── prompt_reporte_ia.md
 │   └── sesion_demo.json
+├── SOC/
+├── Sounds/
+├── Sprites/
 ├── Tools/
 │   └── generar_reporte.py
 ├── build.sh
@@ -84,24 +118,24 @@ SonicFonoKids/
 └── .gitignore
 ```
 
----
+Los respaldos locales deben guardarse fuera de `Lua/`. El script de compilación exige que esa carpeta contenga únicamente `Lua/main.lua`, evitando que SRB2 cargue comandos duplicados.
 
 ## Instalación en Linux Mint
 
-### 1. Instalar dependencias básicas
+### 1. Instalar dependencias
 
 ```bash
 sudo apt update
-sudo apt install git gh zip unzip flatpak python3
+sudo apt install git zip unzip flatpak python3
 ```
 
-### 2. Instalar Sonic Robo Blast 2
+### 2. Instalar SRB2 con Flatpak
 
 ```bash
 flatpak install flathub org.srb2.SRB2
 ```
 
-### 3. Clonar el proyecto
+### 3. Clonar el repositorio
 
 ```bash
 mkdir -p ~/SRB2Mods
@@ -110,540 +144,219 @@ git clone https://github.com/mateocuetoc-hub/SonicFonoKids.git
 cd SonicFonoKids
 ```
 
-### 4. Dar permisos al script de build
+Para probar el bosquejo jugable de `MAP01` antes de que llegue a `main`:
 
 ```bash
+git fetch origin
+git switch --track origin/feature/bosquejo-map01
+```
+
+Si la rama ya existe localmente:
+
+```bash
+git switch feature/bosquejo-map01
+git pull --ff-only origin feature/bosquejo-map01
+```
+
+## Compilar el PK3
+
+```bash
+cd ~/SRB2Mods/SonicFonoKids
 chmod +x build.sh
-```
-
----
-
-## Generar el mod PK3
-
-Desde la carpeta del proyecto:
-
-```bash
-cd ~/SRB2Mods/SonicFonoKids
 ./build.sh
 ```
 
-El build comprueba que `Lua/` contenga únicamente `main.lua`. Si encuentra
-otro archivo `.lua`, se detiene para evitar que SRB2 cargue comandos duplicados.
+El script:
 
-El script genera el archivo:
+1. comprueba que `Lua/` sólo contenga `main.lua`;
+2. empaqueta `Lua/`, `SOC/`, `Sprites/`, `Sounds/` y los mapas WAD disponibles;
+3. genera `~/SRB2Mods/SonicFonoKids.pk3`;
+4. copia el PK3 a la carpeta de addons de SRB2 Flatpak.
 
-```text
-~/SRB2Mods/SonicFonoKids.pk3
-```
-
-y lo copia automáticamente a la carpeta de addons de SRB2 Flatpak:
-
-```text
-~/.var/app/org.srb2.SRB2/.srb2/addons/
-```
-
----
-
-## Abrir Sonic Robo Blast 2
+Para confirmar que el mapa quedó dentro del paquete:
 
 ```bash
-flatpak run org.srb2.SRB2 -file "$HOME/.var/app/org.srb2.SRB2/.srb2/addons/SonicFonoKids.pk3"
+unzip -l "$HOME/.var/app/org.srb2.SRB2/.srb2/addons/SonicFonoKids.pk3" | grep -i MAP01
 ```
 
-Cuando se inicia con `-file`, no se debe cargar el mismo PK3 nuevamente desde
-el menú **Addons**, porque SRB2 intentaría agregar el mod dos veces.
-
----
-
-## Flujo rápido para probar el mod
-
-Desde la terminal:
+## Abrir el juego y cargar MAP01
 
 ```bash
-cd ~/SRB2Mods/SonicFonoKids
-git pull
-./build.sh
-flatpak run org.srb2.SRB2 -file "$HOME/.var/app/org.srb2.SRB2/.srb2/addons/SonicFonoKids.pk3"
+flatpak run org.srb2.SRB2 \
+  -file "$HOME/.var/app/org.srb2.SRB2/.srb2/addons/SonicFonoKids.pk3"
 ```
 
-Dentro del juego:
+Cuando el mod se inicia con `-file`, no se debe cargar el mismo PK3 nuevamente desde el menú **Addons**.
+
+Abre la consola de SRB2 con la tecla situada debajo de `Esc` y ejecuta:
 
 ```text
-Addons
-↓
-addons/
-↓
-SonicFonoKids.pk3
-↓
-Enter
-↓
-Single Player
-↓
-Entrar a un nivel
+devmode 1
+map MAP01
 ```
 
-Abrir la consola del juego con la tecla ubicada debajo de `Esc`, a la izquierda del número `1`.
+## Prueba rápida recomendada
 
-Luego ejecutar:
+Ya dentro de `MAP01`, limpia cualquier objeto anterior e inicia una actividad:
 
 ```text
-fonoma
+fonosalalimpia
+fonoma2
 ```
 
-Tocar los objetos que aparecen.
-
-Al finalizar, el juego mostrará automáticamente un reporte descriptivo.
-
----
-
-## Comandos principales dentro del juego
-
-### Comandos generales
+Después puedes probar vocabulario y revisar los datos:
 
 ```text
-fonokids
-```
-
-Muestra instrucciones generales e inicia una actividad guiada.
-
-```text
-fonolista
-```
-
-Muestra el banco de palabras disponible.
-
-```text
-fonoreset
-```
-
-Reinicia la sesión actual.
-
-```text
-fonoprogreso
-```
-
-Muestra el progreso actual de la actividad.
-
-```text
+fonosalalimpia
+fonovocab2
+fonoparesdetalle
 fonoreporte
-```
-
-Muestra un reporte descriptivo no clínico dentro del juego.
-
-```text
-fonoia
-```
-
-Muestra datos descriptivos ordenados para uso con IA.
-
-```text
 fonojson
 ```
 
-Muestra los datos de la sesión en formato tipo JSON.
+## Comandos principales
 
-```text
-fonocopia
-```
+### Demostración y ayuda
 
-Indica cómo copiar los datos del comando `fonojson`.
+| Comando | Función |
+|---|---|
+| `fonodemo` | Presenta el proyecto y las actividades disponibles |
+| `fonocomandos` | Muestra el resumen de comandos actuales |
+| `fonosala` | Explica el flujo de las salas educativas |
+| `fonosalademo` | Recorre la demostración guiada de salas |
+| `fonosalalimpia` | Elimina objetos educativos activos y reinicia la sala de prueba |
 
----
+### Actividades recomendadas
 
-## Actividades por sílaba
+| Comando | Modo | Objetivo |
+|---|---|---|
+| `fonoma2` | Pares | Sílaba inicial `MA` |
+| `fonopa2` | Pares | Sílaba inicial `PA` |
+| `fonoba2` | Pares | Sílaba inicial `BA` |
+| `fonovocab2` | Pares | Categoría animales |
+| `fonocomida2` | Pares | Categoría comidas |
+| `fonotransporte2` | Pares | Categoría transportes |
+| `fonoma` | Secuencial | Sílaba inicial `MA` |
+| `fonopa` | Secuencial | Sílaba inicial `PA` |
+| `fonoba` | Secuencial | Sílaba inicial `BA` |
+| `fonovocab` | Secuencial | Categoría animales |
+| `fonocomida` | Secuencial | Categoría comidas |
+| `fonotransporte` | Secuencial | Categoría transportes |
 
-```text
-fonoma
-```
+### Progreso, reportes y desarrollo
 
-Inicia una actividad con la sílaba inicial `MA`.
+| Comando | Función |
+|---|---|
+| `fonoprogreso` | Muestra el progreso de la actividad |
+| `fonoparesdetalle` | Muestra cada par, selección y resultado |
+| `fonoreporte` | Genera un reporte descriptivo no clínico en la consola |
+| `fonojson` | Muestra los datos de sesión en formato tipo JSON |
+| `fonocopia` | Explica cómo copiar la salida de `fonojson` |
+| `fonoreset` | Reinicia los datos de la sesión |
+| `fonosprites` | Lista las palabras con sprite |
+| `fonospritecheck` | Comprueba estados y objetos visuales activos |
 
-```text
-fonopa
-```
+## HUD y feedback infantil
 
-Inicia una actividad con la sílaba inicial `PA`.
-
-```text
-fonoba
-```
-
-Inicia una actividad con la sílaba inicial `BA`.
-
-```text
-fononiveles
-```
-
-Muestra los niveles disponibles.
-
----
-
-## Niveles automáticos y secuenciales
-
-```text
-fononivel1auto
-```
-
-Crea una actividad automática con objetos educativos.  
-Al tocar todos los objetos, el reporte aparece automáticamente.
-
-```text
-fononivel1seq
-```
-
-Crea una actividad secuencial donde aparece un objeto a la vez.  
-Esto ayuda a que el jugador se concentre en una palabra por turno.
-
----
-
-## Objetos educativos
-
-```text
-fonoobj mano
-```
-
-Crea un objeto educativo asociado a la palabra `mano`.
-
-```text
-fonoobj pato
-```
-
-Crea un objeto educativo asociado a la palabra `pato`.
-
-```text
-fonoobjetosdemo
-```
-
-Crea una demo con objetos:
-
-```text
-mano
-mapa
-pato
-bala
-```
-
----
-
-## Quiz
-
-```text
-fonoquiz
-```
-
-Inicia un quiz de sílaba inicial.
-
-```text
-fonoquizsi
-```
-
-Responde “sí” en el quiz.
-
-```text
-fonoquizno
-```
-
-Responde “no” en el quiz.
-
-```text
-fonoquizpregunta
-```
-
-Muestra nuevamente la pregunta actual.
-
----
-
-## Ejemplo de actividad: sílaba MA
-
-Actividad:
-
-```text
-Identificar palabras que comienzan con MA.
-```
-
-Palabras objetivo:
-
-```text
-mano
-mapa
-```
-
-Distractores:
-
-```text
-pato
-bala
-```
-
-Resultado esperado:
-
-```text
-mano → correcto
-mapa → correcto
-pato → error / distractor fonológico
-bala → error / distractor fonológico
-```
-
-Reporte esperado:
-
-```text
-Intentos: 4
-Correctos: 2
-Errores: 2
-Logro: 50%
-Errores observados:
-- pato / distractor_fonologico
-- bala / distractor_fonologico
-```
-
----
-
-## HUD visual
-
-El mod muestra un HUD propio con información como:
+El HUD muestra información como:
 
 ```text
 SONIC FONOKIDS
+BUSCA: MA
+IZQ: MANO | DER: PATO
 OK: 0  ERR: 0
-INT: 0/4
-OBJETO: MANO
-OBJETIVO: MA
+INT: 0/2
 ```
 
-El HUD permite visualizar:
+El feedback usa mensajes breves y positivos. No aplica castigos fuertes ni presenta conclusiones clínicas; indica si la palabra coincide con la sílaba o categoría trabajada y prepara el siguiente par después de una pausa corta.
 
-- respuestas correctas;
-- errores;
-- intentos;
-- palabra actual;
-- objetivo de la actividad;
-- feedback infantil.
+## Reportes descriptivos
 
----
+`fonoreporte` resume:
 
-## Feedback infantil
+- identificador anónimo de sesión;
+- actividad y objetivo;
+- intentos, respuestas correctas y errores;
+- ayudas utilizadas;
+- porcentaje de logro;
+- resultado descriptivo;
+- errores observados;
+- detalle de cada par cuando corresponde.
 
-El mod evita mensajes técnicos y usa mensajes más amigables, por ejemplo:
+`fonojson` entrega datos estructurados que pueden copiarse a un archivo dentro de `Reports/`. Para generar un reporte de texto:
 
-```text
-¡Muy bien! MANO empieza con MA.
-¡Sigue así!
+```bash
+python3 Tools/generar_reporte.py Reports/sesion_demo.json
 ```
 
-o:
+Con una ruta de salida personalizada:
 
-```text
-Buen intento. PATO no empieza con MA.
-Busquemos una palabra que suene con MA.
+```bash
+python3 Tools/generar_reporte.py \
+  Reports/sesion_demo.json \
+  -o Reports/reporte_prueba.txt
 ```
 
-La idea es mantener una experiencia positiva, sin castigos fuertes y con retroalimentación clara.
+La plantilla `Reports/prompt_reporte_ia.md` ayuda a redactar un informe externo conservando el enfoque descriptivo y no diagnóstico.
 
----
-
-## Reportes dentro del juego
-
-### Reporte descriptivo
-
-Comando:
+## Flujo de datos
 
 ```text
-fonoreporte
-```
-
-Muestra un reporte como:
-
-```text
-REPORTE DESCRIPTIVO NO CLÍNICO
-Sesión: Nino_001
-Actividad: sílaba inicial MA
-Intentos: 4
-Correctos: 2
-Errores: 2
-Logro: 50%
-Resultado descriptivo: desempeño intermedio dentro de la actividad
-```
-
-### Datos para IA
-
-Comando:
-
-```text
-fonoia
-```
-
-Muestra datos ordenados para generar un reporte externo.
-
-### JSON para IA
-
-Comando:
-
-```text
+Actividad en SRB2
+      ↓
+Registro de intentos, aciertos, errores y ayudas
+      ↓
+fonoreporte / fonoparesdetalle
+      ↓
 fonojson
-```
-
-Muestra un bloque estructurado como:
-
-```json
-{
-  "proyecto": "Sonic FonoKids",
-  "tipo_reporte": "descriptivo_no_clinico",
-  "jugador_anonimo": "Nino_001",
-  "actividad": "conciencia_fonologica_silaba_inicial_MA",
-  "objetivo": "MA",
-  "intentos_totales": 4,
-  "respuestas_correctas": 2,
-  "errores": 2,
-  "ayudas_usadas": 0,
-  "porcentaje_logro": 50,
-  "completado": true,
-  "errores_detalle": [
-    { "palabra": "pato", "tipo": "distractor_fonologico" },
-    { "palabra": "bala", "tipo": "distractor_fonologico" }
-  ]
-}
-```
-
----
-
-## Plantilla para IA
-
-El proyecto incluye una plantilla en:
-
-```text
-Reports/prompt_reporte_ia.md
-```
-
-La idea es usar el comando:
-
-```text
-fonojson
-```
-
-copiar los datos generados y pegarlos junto con la plantilla para obtener un reporte descriptivo.
-
-Reglas del reporte:
-
-- no diagnosticar;
-- no usar lenguaje clínico definitivo;
-- no decir que el niño tiene un trastorno;
-- no reemplazar la interpretación de una fonoaudióloga;
-- usar lenguaje claro, descriptivo y profesional.
-
----
-
-## Generador externo de reportes
-
-El proyecto incluye una herramienta en Python:
-
-```text
+      ↓
 Tools/generar_reporte.py
+      ↓
+Revisión por una persona del área fonoaudiológica
 ```
 
-Sirve para transformar un archivo `.json` de sesión en un reporte `.txt`.
+## Ramas de trabajo
 
-### Uso básico
+| Rama | Uso actual |
+|---|---|
+| `main` | Base estable del proyecto |
+| `feature/mapa-fonokids` | Integración inicial de mapas al PK3 y documentación de diseño |
+| `feature/bosquejo-map01` | Bosquejo jugable actual de cuatro salas |
 
-```bash
-python3 Tools/generar_reporte.py Reports/sesion_demo.json
-```
+No se recomienda hacer cambios experimentales directamente en `main`. El mapa debe seguir probándose en su rama antes de integrarlo a la base estable.
 
-Esto genera:
+## Problemas resueltos durante el desarrollo
 
-```text
-Reports/reporte_sesion_demo.txt
-```
+- comandos duplicados por respaldos `.lua` dentro de `Lua/`;
+- objetos invisibles por offsets incorrectos en los PNG;
+- asignación de sprites y estados por palabra;
+- separación lateral y altura de los pares de pictogramas;
+- limpieza de objetos entre actividades;
+- pausa antes de mostrar el siguiente par;
+- inclusión de `Maps/*.wad` dentro del PK3;
+- cierre de SRB2 por un mapa sin nodos válidos;
+- ejecución de Zone Builder en Linux Mint mediante Wine.
 
-### Uso con salida personalizada
+## Próximos pasos
 
-```bash
-python3 Tools/generar_reporte.py Reports/sesion_demo.json -o Reports/reporte_prueba.txt
-```
-
-El reporte generado es descriptivo y no clínico.
-
----
-
-## Flujo juego → datos → reporte
-
-El flujo ideal del proyecto es:
-
-```text
-1. El niño juega una actividad en SRB2.
-2. El mod registra intentos, aciertos, errores y porcentaje de logro.
-3. Se usa fonojson para obtener datos estructurados.
-4. Los datos se copian a un archivo JSON.
-5. Python genera un reporte descriptivo.
-6. Una persona del área fonoaudiológica interpreta el resultado.
-```
-
-Ejemplo:
-
-```bash
-python3 Tools/generar_reporte.py Reports/sesion_demo.json
-cat Reports/reporte_sesion_demo.txt
-```
-
----
-
-## Advertencia ética
-
-Sonic FonoKids no entrega diagnósticos.
-
-Los datos obtenidos dentro del juego deben ser interpretados por una persona formada en el área fonoaudiológica.
-
-No se recomienda guardar nombres reales de niños ni datos personales sensibles.
-
-Para pruebas se deben usar identificadores anónimos como:
-
-```text
-Nino_001
-Nino_002
-```
-
----
-
-## Flujo de trabajo con Git
-
-Antes de trabajar:
-
-```bash
-git pull
-```
-
-Después de modificar y probar:
-
-```bash
-git status
-git add .
-git commit -m "Descripcion del cambio"
-git push
-```
-
----
-
-## Roadmap
-
-Próximas mejoras posibles:
-
-- reemplazar los sprites provisionales por ilustraciones infantiles;
-- agregar más sílabas;
-- agregar actividades de rimas;
-- mejorar la interfaz visual;
-- generar reportes más completos;
-- exportar datos de sesión de forma más automática;
-- crear mapas educativos propios;
+- decorar `MAP01` y diferenciar visualmente cada sala;
+- agregar señalética e instrucciones dentro del escenario;
+- vincular las salas con actividades sin depender tanto de la consola;
+- posicionar las actividades de acuerdo con cada zona del mapa;
 - agregar sonidos o instrucciones grabadas;
-- crear una versión más presentable para demostración académica.
+- ampliar el banco de sílabas, palabras y categorías;
+- mejorar la exportación automática de sesiones;
+- realizar pruebas de usabilidad con supervisión fonoaudiológica;
+- preparar una versión de demostración académica.
+
+## Privacidad y uso responsable
+
+- Utilizar identificadores anónimos como `Nino_001`.
+- No guardar nombres reales ni datos personales sensibles de niños.
+- No interpretar el porcentaje de logro como diagnóstico.
+- Revisar los resultados con una persona formada en Fonoaudiología.
+- Mantener las actividades como apoyo educativo y no como sustituto de atención profesional.
 
 ---
 
-## Estado del proyecto
-
-Proyecto en desarrollo experimental.
-
-Versión actual aproximada:
-
-```text
-Sonic FonoKids v0.0.3 experimental
-```
+Proyecto estudiantil en desarrollo activo. El objetivo actual es convertir el bosquejo técnico en una demostración educativa clara, segura y presentable.
