@@ -8,7 +8,7 @@ ADDONS_DIR="$HOME/.var/app/org.srb2.SRB2/.srb2/addons"
 
 cd "$ROOT_DIR"
 
-mkdir -p Lua SOC Sprites Sounds Maps
+mkdir -p Lua SOC Sprites Sounds Music Maps
 
 mapfile -t LUA_FILES < <(find Lua -type f -name '*.lua' -print)
 
@@ -21,7 +21,7 @@ fi
 
 echo "Generando SonicFonoKids.pk3..."
 rm -f "$PK3_PATH"
-zip -qr "$PK3_PATH" Lua SOC Sprites Sounds
+zip -qr "$PK3_PATH" Lua SOC Sprites Sounds Music
 
 if compgen -G "Maps/*.wad" > /dev/null; then
     zip -qr "$PK3_PATH" Maps/*.wad
