@@ -21,6 +21,7 @@ Versión del mod: **v0.0.3 experimental**
 | HUD y feedback | ✅ Funcional | Objetivo, alternativas, aciertos, errores e intentos |
 | Pictogramas | ✅ Integrados | 18 palabras con sprites propios |
 | Reportes | ✅ Funcional | Reporte en consola, detalle por par y salida tipo JSON |
+| Evaluación descriptiva oral | 🧪 En prueba | Registro manual de producción correcta, omisión, sustitución, distorsión o ayuda |
 | Herramienta externa | ✅ Funcional | Generador de reporte `.txt` en Python |
 | Mapa propio | 🧪 Bosquejo jugable | `MAP01.wad` con cuatro salas y tres pasillos, sin enemigos ni precipicios |
 | Integración automática al mapa | ⏳ Pendiente | Las actividades todavía se inician mediante comandos de consola |
@@ -253,6 +254,11 @@ fonojson
 | `fonojson` | Muestra los datos de sesión en formato tipo JSON |
 | `fonocopia` | Explica cómo copiar la salida de `fonojson` |
 | `fonoreset` | Reinicia los datos de la sesión |
+| `fonoevaluacion` | Muestra el flujo de evaluación descriptiva oral |
+| `fonosesion` | Prepara una sesión con código anónimo y edad |
+| `fonoproduccion` | Registra manualmente una producción oral con códigos del 1 al 5 |
+| `fonoproducciondeshacer` | Deshace el último registro oral |
+| `fonoproducciones` | Muestra el resumen de producciones observadas |
 | `fonosprites` | Lista las palabras con sprite |
 | `fonospritecheck` | Comprueba estados y objetos visuales activos |
 
@@ -298,6 +304,23 @@ python3 Tools/generar_reporte.py \
 ```
 
 La plantilla `Reports/prompt_reporte_ia.md` ayuda a redactar un informe externo conservando el enfoque descriptivo y no diagnóstico.
+
+### Registro descriptivo de producción oral
+
+La evaluadora prepara la sesión con un código anónimo y la edad, inicia una actividad y registra manualmente lo que escucha después de cada elección:
+
+```text
+fonosesion Nino_002 5a4m
+fonoma2
+
+fonoproduccion 1       // correcta
+fonoproduccion 2       // omisión
+fonoproduccion 3 bato  // sustitución; nota opcional
+fonoproduccion 4       // distorsión
+fonoproduccion 5       // producción con ayuda
+```
+
+`fonoproducciones` muestra el resumen y `fonoproducciondeshacer` permite corregir el último registro. Los resultados también aparecen en `fonoreporte`, `fonojson` y el reporte `.txt` generado por Python. Este registro depende de la observación humana y no constituye diagnóstico.
 
 ## Flujo de datos
 

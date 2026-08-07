@@ -2,6 +2,7 @@
   "proyecto": "Sonic FonoKids",
   "tipo_reporte": "descriptivo_no_clinico",
   "jugador_anonimo": "Nino_001",
+  "edad": "5a4m",
   "actividad": "eleccion_pares_silaba_MA",
   "objetivo": "MA",
   "nivel": "1",
@@ -16,6 +17,18 @@
     {
       "palabra": "pato",
       "tipo": "distractor_fonologico"
+    }
+  ],
+  "producciones_orales": [
+    {
+      "palabra": "mano",
+      "resultado": "correcta",
+      "nota": ""
+    },
+    {
+      "palabra": "pato",
+      "resultado": "sustitucion",
+      "nota": "bato"
     }
   ]
 }
