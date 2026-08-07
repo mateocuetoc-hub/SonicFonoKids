@@ -1094,6 +1094,15 @@ local function fonoPorcentajeSeguro()
     return obtenerPorcentajeLogro()
 end
 
+local function fonoJSONSeguro(valor)
+    local texto = tostring(valor or "")
+
+    texto = string.gsub(texto, "\\", "\\\\")
+    texto = string.gsub(texto, '"', '\\"')
+
+    return texto
+end
+
 local function fonoMostrarJSON(player)
     local porcentaje = fonoPorcentajeSeguro()
 
@@ -1101,9 +1110,10 @@ local function fonoMostrarJSON(player)
     CONS_Printf(player, "{")
     CONS_Printf(player, '  "proyecto": "Sonic FonoKids",')
     CONS_Printf(player, '  "tipo_reporte": "descriptivo_no_clinico",')
-    CONS_Printf(player, '  "jugador_anonimo": "' .. tostring(sesion.jugador) .. '",')
-    CONS_Printf(player, '  "actividad": "' .. tostring(sesion.actividad) .. '",')
-    CONS_Printf(player, '  "objetivo": "' .. tostring(sesion.objetivo) .. '",')
+    CONS_Printf(player, '  "jugador_anonimo": "' .. fonoJSONSeguro(sesion.jugador) .. '",')
+    CONS_Printf(player, '  "edad": "' .. fonoJSONSeguro(sesion.edad or "no_registrada") .. '",')
+    CONS_Printf(player, '  "actividad": "' .. fonoJSONSeguro(sesion.actividad) .. '",')
+    CONS_Printf(player, '  "objetivo": "' .. fonoJSONSeguro(sesion.objetivo) .. '",')
     CONS_Printf(player, '  "nivel": "' .. tostring(sesion.nivel) .. '",')
     CONS_Printf(player, '  "intentos_totales": ' .. tostring(sesion.intentos) .. ',')
     CONS_Printf(player, '  "respuestas_correctas": ' .. tostring(sesion.correctos) .. ',')
@@ -1123,7 +1133,23 @@ local function fonoMostrarJSON(player)
                 coma = ""
             end
 
-            CONS_Printf(player, '    { "palabra": "' .. tostring(e.palabra) .. '", "tipo": "' .. tostring(e.tipo) .. '" }' .. coma)
+            CONS_Printf(player, '    { "palabra": "' .. fonoJSONSeguro(e.palabra) .. '", "tipo": "' .. fonoJSONSeguro(e.tipo) .. '" }' .. coma)
+        end
+    end
+
+    CONS_Printf(player, "  ],")
+    CONS_Printf(player, '  "producciones_orales": [')
+
+    if sesion.producciones_detalle ~= nil and #sesion.producciones_detalle > 0 then
+        for i = 1, #sesion.producciones_detalle do
+            local produccion = sesion.producciones_detalle[i]
+            local coma = ","
+
+            if i == #sesion.producciones_detalle then
+                coma = ""
+            end
+
+            CONS_Printf(player, '    { "palabra": "' .. fonoJSONSeguro(produccion.palabra) .. '", "resultado": "' .. fonoJSONSeguro(produccion.resultado) .. '", "nota": "' .. fonoJSONSeguro(produccion.nota) .. '" }' .. coma)
         end
     end
 
@@ -2931,3 +2957,244 @@ addHook("MobjThinker", function(objeto)
         objeto.z = alturaSegura
     end
 end, MT_FONO_OBJETO)
+
+
+-- ==========================================
+-- EVALUACION DESCRIPTIVA DE PRODUCCION ORAL
+-- ==========================================
+-- Esta capa no diagnostica. La evaluadora registra manualmente
+-- lo que escucha despues de cada palabra seleccionada en el juego.
+
+local fonoDatosParticipante = {
+    codigo = jugadorDemo,
+    edad = "no_registrada"
+}
+
+local iniciarSesionBaseEvaluacion = iniciarSesion
+
+iniciarSesion = function()
+    iniciarSesionBaseEvaluacion()
+
+    sesion.jugador = fonoDatosParticipante.codigo
+    sesion.edad = fonoDatosParticipante.edad
+    sesion.producciones_pendientes = {}
+    sesion.producciones_detalle = {}
+end
+
+local function fonoAsegurarProducciones()
+    if sesion.producciones_pendientes == nil then
+        sesion.producciones_pendientes = {}
+    end
+
+    if sesion.producciones_detalle == nil then
+        sesion.producciones_detalle = {}
+    end
+end
+
+local function fonoEncolarProduccion(palabra)
+    if palabra == nil or palabra == "" then
+        return
+    end
+
+    fonoAsegurarProducciones()
+    table.insert(sesion.producciones_pendientes, tostring(palabra))
+end
+
+-- Conserva todos los registros automaticos existentes y agrega
+-- una cola independiente para la observacion oral de la evaluadora.
+local registrarCorrectoBaseEvaluacion = registrarCorrecto
+
+registrarCorrecto = function(player, palabra)
+    fonoEncolarProduccion(palabra)
+    registrarCorrectoBaseEvaluacion(player, palabra)
+end
+
+local registrarErrorBaseEvaluacion = registrarError
+
+registrarError = function(player, palabra, tipo)
+    fonoEncolarProduccion(palabra)
+    registrarErrorBaseEvaluacion(player, palabra, tipo)
+end
+
+local fonoResultadosProduccion = {
+    ["1"] = "correcta",
+    ["2"] = "omision",
+    ["3"] = "sustitucion",
+    ["4"] = "distorsion",
+    ["5"] = "con_ayuda",
+    correcta = "correcta",
+    omision = "omision",
+    sustitucion = "sustitucion",
+    distorsion = "distorsion",
+    ayuda = "con_ayuda",
+    con_ayuda = "con_ayuda"
+}
+
+local function fonoContarProducciones()
+    local conteo = {
+        correcta = 0,
+        omision = 0,
+        sustitucion = 0,
+        distorsion = 0,
+        con_ayuda = 0
+    }
+
+    fonoAsegurarProducciones()
+
+    for i = 1, #sesion.producciones_detalle do
+        local resultado = sesion.producciones_detalle[i].resultado
+
+        if conteo[resultado] ~= nil then
+            conteo[resultado] = conteo[resultado] + 1
+        end
+    end
+
+    return conteo
+end
+
+local function fonoMostrarProducciones(player)
+    local conteo = fonoContarProducciones()
+
+    CONS_Printf(player, "===== PRODUCCION ORAL OBSERVADA =====")
+    CONS_Printf(player, "Edad registrada: " .. tostring(sesion.edad or "no_registrada"))
+    CONS_Printf(player, "Registros: " .. tostring(#sesion.producciones_detalle))
+    CONS_Printf(player, "Pendientes: " .. tostring(#sesion.producciones_pendientes))
+    CONS_Printf(player, "Correctas: " .. tostring(conteo.correcta))
+    CONS_Printf(player, "Omisiones: " .. tostring(conteo.omision))
+    CONS_Printf(player, "Sustituciones: " .. tostring(conteo.sustitucion))
+    CONS_Printf(player, "Distorsiones: " .. tostring(conteo.distorsion))
+    CONS_Printf(player, "Con ayuda: " .. tostring(conteo.con_ayuda))
+
+    if #sesion.producciones_detalle > 0 then
+        CONS_Printf(player, "Detalle:")
+
+        for i = 1, #sesion.producciones_detalle do
+            local produccion = sesion.producciones_detalle[i]
+            local linea = tostring(i) .. ". " .. string.upper(tostring(produccion.palabra)) .. " = " .. string.upper(tostring(produccion.resultado))
+
+            if produccion.nota ~= nil and produccion.nota ~= "" then
+                linea = linea .. " / nota: " .. tostring(produccion.nota)
+            end
+
+            CONS_Printf(player, linea)
+        end
+    end
+
+    if #sesion.producciones_pendientes > 0 then
+        CONS_Printf(player, "Siguiente pendiente: " .. string.upper(tostring(sesion.producciones_pendientes[1])))
+    end
+
+    CONS_Printf(player, "Registro descriptivo; no constituye diagnostico.")
+    CONS_Printf(player, "=====================================")
+end
+
+COM_AddCommand("fonosesion", function(player, codigo, edad)
+    if codigo == nil or codigo == "" then
+        CONS_Printf(player, "Uso: fonosesion <codigo_anonimo> <edad>")
+        CONS_Printf(player, "Ejemplo: fonosesion Nino_002 5a4m")
+        CONS_Printf(player, "No uses el nombre real del nino.")
+        return
+    end
+
+    fonoDatosParticipante.codigo = tostring(codigo)
+
+    if edad == nil or edad == "" then
+        fonoDatosParticipante.edad = "no_registrada"
+    else
+        fonoDatosParticipante.edad = tostring(edad)
+    end
+
+    iniciarSesion()
+
+    CONS_Printf(player, "Sesion descriptiva preparada.")
+    CONS_Printf(player, "Codigo anonimo: " .. tostring(sesion.jugador))
+    CONS_Printf(player, "Edad: " .. tostring(sesion.edad))
+    CONS_Printf(player, "Ahora inicia una actividad, por ejemplo fonoma2.")
+end)
+
+COM_AddCommand("fonoproduccion", function(player, codigo, nota)
+    local clave = string.lower(tostring(codigo or ""))
+    local resultado = fonoResultadosProduccion[clave]
+
+    if resultado == nil then
+        CONS_Printf(player, "Uso: fonoproduccion <1-5> [nota_sin_espacios]")
+        CONS_Printf(player, "1 correcta | 2 omision | 3 sustitucion")
+        CONS_Printf(player, "4 distorsion | 5 con ayuda")
+        return
+    end
+
+    fonoAsegurarProducciones()
+
+    if #sesion.producciones_pendientes == 0 then
+        CONS_Printf(player, "No hay palabras pendientes.")
+        CONS_Printf(player, "Primero toca una opcion dentro de la actividad.")
+        return
+    end
+
+    local palabra = table.remove(sesion.producciones_pendientes, 1)
+
+    table.insert(sesion.producciones_detalle, {
+        palabra = palabra,
+        resultado = resultado,
+        nota = tostring(nota or "")
+    })
+
+    if resultado == "con_ayuda" then
+        sesion.ayudas = (sesion.ayudas or 0) + 1
+    end
+
+    CONS_Printf(player, "Produccion registrada: " .. string.upper(tostring(palabra)) .. " = " .. string.upper(resultado))
+
+    if #sesion.producciones_pendientes > 0 then
+        CONS_Printf(player, "Siguiente pendiente: " .. string.upper(tostring(sesion.producciones_pendientes[1])))
+    elseif sesion.completado == true then
+        CONS_Printf(player, "Todas las producciones pendientes fueron registradas.")
+        CONS_Printf(player, "Actualizando reporte descriptivo...")
+        mostrarReporteDescriptivo(player)
+    end
+end)
+
+COM_AddCommand("fonoproducciondeshacer", function(player)
+    fonoAsegurarProducciones()
+
+    if #sesion.producciones_detalle == 0 then
+        CONS_Printf(player, "No hay producciones para deshacer.")
+        return
+    end
+
+    local produccion = table.remove(sesion.producciones_detalle)
+    table.insert(sesion.producciones_pendientes, 1, produccion.palabra)
+
+    if produccion.resultado == "con_ayuda" and (sesion.ayudas or 0) > 0 then
+        sesion.ayudas = sesion.ayudas - 1
+    end
+
+    CONS_Printf(player, "Registro deshecho: " .. string.upper(tostring(produccion.palabra)))
+end)
+
+COM_AddCommand("fonoproducciones", function(player)
+    fonoMostrarProducciones(player)
+end)
+
+COM_AddCommand("fonoevaluacion", function(player)
+    CONS_Printf(player, "====== EVALUACION DESCRIPTIVA ======")
+    CONS_Printf(player, "1) fonosesion Nino_002 5a4m")
+    CONS_Printf(player, "2) Inicia una actividad: fonoma2")
+    CONS_Printf(player, "3) Tras cada eleccion registra lo escuchado:")
+    CONS_Printf(player, "   fonoproduccion 1 -> correcta")
+    CONS_Printf(player, "   fonoproduccion 2 -> omision")
+    CONS_Printf(player, "   fonoproduccion 3 bato -> sustitucion")
+    CONS_Printf(player, "   fonoproduccion 4 -> distorsion")
+    CONS_Printf(player, "   fonoproduccion 5 -> con ayuda")
+    CONS_Printf(player, "4) fonoproducciones o fonoreporte")
+    CONS_Printf(player, "5) fonojson para exportar")
+    CONS_Printf(player, "No uses nombres reales.")
+    CONS_Printf(player, "====================================")
+end)
+
+local mostrarReporteDescriptivoBaseEvaluacion = mostrarReporteDescriptivo
+
+mostrarReporteDescriptivo = function(player)
+    mostrarReporteDescriptivoBaseEvaluacion(player)
+    fonoMostrarProducciones(player)
+end

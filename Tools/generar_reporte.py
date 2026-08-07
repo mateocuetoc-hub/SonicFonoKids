@@ -73,6 +73,7 @@ def describir_objetivo(actividad, objetivo):
 
 def generar_reporte(datos):
     jugador = datos.get("jugador_anonimo", "Nino_001")
+    edad = datos.get("edad", "no registrada")
     actividad = datos.get("actividad", "actividad no especificada")
     objetivo = datos.get("objetivo", "no especificado")
     nivel = datos.get("nivel", "no especificado")
@@ -83,6 +84,7 @@ def generar_reporte(datos):
     porcentaje = float(datos.get("porcentaje_logro", 0))
     completado = formatear_completado(datos.get("completado", False))
     errores_detalle = datos.get("errores_detalle", [])
+    producciones_orales = datos.get("producciones_orales", [])
 
     desempeno = clasificar_desempeno(porcentaje)
     observacion = generar_observacion(porcentaje, errores)
@@ -95,6 +97,7 @@ def generar_reporte(datos):
     lineas.append("")
     lineas.append("1. Identificación de la sesión")
     lineas.append(f"Jugador anónimo: {jugador}")
+    lineas.append(f"Edad: {edad}")
     lineas.append(f"Nivel: {nivel}")
     lineas.append(f"Actividad: {actividad}")
     lineas.append(describir_objetivo(actividad, objetivo))
@@ -114,7 +117,44 @@ def generar_reporte(datos):
     lineas.append(observacion)
     lineas.append("")
 
-    lineas.append("4. Detalle de errores")
+    lineas.append("4. Producción oral observada")
+    if producciones_orales:
+        conteo = {
+            "correcta": 0,
+            "omision": 0,
+            "sustitucion": 0,
+            "distorsion": 0,
+            "con_ayuda": 0,
+        }
+
+        for produccion in producciones_orales:
+            resultado = str(produccion.get("resultado", "sin_registro"))
+            if resultado in conteo:
+                conteo[resultado] += 1
+
+        lineas.append(f"Producciones registradas: {len(producciones_orales)}")
+        lineas.append(f"Correctas: {conteo['correcta']}")
+        lineas.append(f"Omisiones: {conteo['omision']}")
+        lineas.append(f"Sustituciones: {conteo['sustitucion']}")
+        lineas.append(f"Distorsiones: {conteo['distorsion']}")
+        lineas.append(f"Con ayuda: {conteo['con_ayuda']}")
+        lineas.append("")
+
+        for i, produccion in enumerate(producciones_orales, start=1):
+            palabra = produccion.get("palabra", "sin palabra")
+            resultado = produccion.get("resultado", "sin registro")
+            nota = str(produccion.get("nota", "")).strip()
+            detalle = f"{i}. Palabra: {palabra} | Producción: {resultado}"
+
+            if nota:
+                detalle += f" | Nota: {nota}"
+
+            lineas.append(detalle)
+    else:
+        lineas.append("No se registraron observaciones de producción oral.")
+    lineas.append("")
+
+    lineas.append("5. Detalle de errores dentro del juego")
     if errores_detalle:
         for i, error in enumerate(errores_detalle, start=1):
             palabra = error.get("palabra", "sin palabra")
@@ -124,11 +164,11 @@ def generar_reporte(datos):
         lineas.append("No se registraron errores.")
     lineas.append("")
 
-    lineas.append("5. Sugerencias generales para revisión")
+    lineas.append("6. Sugerencias generales para revisión")
     lineas.append(sugerencia)
     lineas.append("")
 
-    lineas.append("6. Advertencia")
+    lineas.append("7. Advertencia")
     lineas.append(
         "Este reporte es descriptivo y se basa únicamente en datos obtenidos dentro "
         "del videojuego Sonic FonoKids."
