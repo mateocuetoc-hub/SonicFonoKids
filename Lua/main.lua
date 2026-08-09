@@ -1,5 +1,10 @@
 -- Forward declarations FonoKids
 local fonoLimpiarObjetosActivos
+local registrarCorrecto
+local registrarError
+local fonoRegistrarDetallePar
+local fonoEncolarProduccion
+local fonoAvanzarPares
 
 print("====================================")
 print("Sonic FonoKids v0.0.3 cargado")
@@ -33,38 +38,6 @@ local function tiempoTranscurrido()
     end
 
     return (leveltime - sesion.tiempo_inicio) / TICRATE
-end
-
-local function registrarCorrecto(player, palabra)
-    if sesion.completado == true then
-        return
-    end
-
-    sesion.intentos = sesion.intentos + 1
-    sesion.correctos = sesion.correctos + 1
-
-    CONS_Printf(player, "Muy bien. " .. palabra .. " comienza con " .. sesion.objetivo)
-
-    if sesion.correctos >= 5 then
-        sesion.completado = true
-        CONS_Printf(player, "Actividad completada. Escribe fonoreporte para ver el reporte.")
-    end
-end
-
-local function registrarError(player, palabra, tipo)
-    if sesion.completado == true then
-        return
-    end
-
-    sesion.intentos = sesion.intentos + 1
-    sesion.errores = sesion.errores + 1
-
-    table.insert(sesion.errores_detalle, {
-        palabra = palabra,
-        tipo = tipo
-    })
-
-    CONS_Printf(player, "Buen intento. Busquemos palabras con " .. sesion.objetivo)
 end
 
 local function registrarAyuda(player)
@@ -898,57 +871,6 @@ local function fonoMostrarFeedbackError(player, palabra)
     end
 end
 
-registrarCorrecto = function(player, palabra)
-    if sesion.completado == true then
-        return
-    end
-
-    sesion.intentos = (sesion.intentos or 0) + 1
-    sesion.correctos = (sesion.correctos or 0) + 1
-
-    fonoMostrarFeedbackCorrecto(player, palabra)
-
-    if sesion.total_esperado == nil and sesion.correctos >= 5 then
-        sesion.completado = true
-        CONS_Printf(player, "Actividad completada. Escribe fonoreporte para ver el reporte.")
-    end
-
-    if revisarCierreActividad ~= nil then
-        revisarCierreActividad(player)
-    end
-
-    if nivelSecuencial ~= nil and nivelSecuencial.activo == true and sesion.completado ~= true then
-        nivelSecuencial.indice = nivelSecuencial.indice + 1
-        crearSiguienteObjetoSecuencial(player)
-    end
-end
-
-registrarError = function(player, palabra, tipo)
-    if sesion.completado == true then
-        return
-    end
-
-    sesion.intentos = (sesion.intentos or 0) + 1
-    sesion.errores = (sesion.errores or 0) + 1
-
-    table.insert(sesion.errores_detalle, {
-        palabra = palabra,
-        tipo = tipo
-    })
-
-    fonoMostrarFeedbackError(player, palabra)
-
-    if revisarCierreActividad ~= nil then
-        revisarCierreActividad(player)
-    end
-
-    if nivelSecuencial ~= nil and nivelSecuencial.activo == true and sesion.completado ~= true then
-        nivelSecuencial.indice = nivelSecuencial.indice + 1
-        crearSiguienteObjetoSecuencial(player)
-    end
-end
-
-
 -- ================================
 -- Niveles por silaba: MA / PA / BA
 -- ================================
@@ -1321,6 +1243,14 @@ local function fonoEsActividadVocabulario()
 end
 
 registrarCorrecto = function(player, palabra)
+    if fonoEncolarProduccion ~= nil then
+        fonoEncolarProduccion(palabra)
+    end
+
+    if fonoRegistrarDetallePar ~= nil then
+        fonoRegistrarDetallePar("correcto", palabra, "")
+    end
+
     if sesion.completado == true then
         return
     end
@@ -1359,9 +1289,21 @@ registrarCorrecto = function(player, palabra)
         vocabSecuencial.indice = vocabSecuencial.indice + 1
         crearSiguienteObjetoVocabulario(player)
     end
+
+    if fonoAvanzarPares ~= nil then
+        fonoAvanzarPares(player)
+    end
 end
 
 registrarError = function(player, palabra, tipo)
+    if fonoEncolarProduccion ~= nil then
+        fonoEncolarProduccion(palabra)
+    end
+
+    if fonoRegistrarDetallePar ~= nil then
+        fonoRegistrarDetallePar("error", palabra, tipo)
+    end
+
     if sesion.completado == true then
         return
     end
@@ -1399,6 +1341,10 @@ registrarError = function(player, palabra, tipo)
     if vocabSecuencial ~= nil and vocabSecuencial.activo == true and sesion.completado ~= true then
         vocabSecuencial.indice = vocabSecuencial.indice + 1
         crearSiguienteObjetoVocabulario(player)
+    end
+
+    if fonoAvanzarPares ~= nil then
+        fonoAvanzarPares(player)
     end
 end
 
@@ -1878,29 +1824,7 @@ local function fonoIniciarParesMA(player)
     crearSiguienteParFono(player)
 end
 
-local registrarCorrectoParesBase = registrarCorrecto
-
-registrarCorrecto = function(player, palabra)
-    registrarCorrectoParesBase(player, palabra)
-
-    if fonoPares ~= nil and fonoPares.activo == true then
-        fonoLimpiarObjetosPares()
-
-        if sesion.completado == true then
-            fonoPares.activo = false
-            return
-        end
-
-        fonoPares.indice = fonoPares.indice + 1
-        fonoProgramarSiguientePar(player)
-    end
-end
-
-local registrarErrorParesBase = registrarError
-
-registrarError = function(player, palabra, tipo)
-    registrarErrorParesBase(player, palabra, tipo)
-
+fonoAvanzarPares = function(player)
     if fonoPares ~= nil and fonoPares.activo == true then
         fonoLimpiarObjetosPares()
 
@@ -2365,7 +2289,7 @@ local function fonoRespuestaEsperadaDelPar(par)
     return "desconocida"
 end
 
-local function fonoRegistrarDetallePar(resultado, palabraSeleccionada, tipoError)
+fonoRegistrarDetallePar = function(resultado, palabraSeleccionada, tipoError)
     if fonoEsActividadPares() == false then
         return
     end
@@ -2403,20 +2327,6 @@ local function fonoRegistrarDetallePar(resultado, palabraSeleccionada, tipoError
         resultado = resultado,
         tipo = tipoError or ""
     })
-end
-
-local registrarCorrectoReporteParesBase = registrarCorrecto
-
-registrarCorrecto = function(player, palabra)
-    fonoRegistrarDetallePar("correcto", palabra, "")
-    registrarCorrectoReporteParesBase(player, palabra)
-end
-
-local registrarErrorReporteParesBase = registrarError
-
-registrarError = function(player, palabra, tipo)
-    fonoRegistrarDetallePar("error", palabra, tipo)
-    registrarErrorReporteParesBase(player, palabra, tipo)
 end
 
 local function fonoPorcentajeSesion()
@@ -2991,29 +2901,13 @@ local function fonoAsegurarProducciones()
     end
 end
 
-local function fonoEncolarProduccion(palabra)
+fonoEncolarProduccion = function(palabra)
     if palabra == nil or palabra == "" then
         return
     end
 
     fonoAsegurarProducciones()
     table.insert(sesion.producciones_pendientes, tostring(palabra))
-end
-
--- Conserva todos los registros automaticos existentes y agrega
--- una cola independiente para la observacion oral de la evaluadora.
-local registrarCorrectoBaseEvaluacion = registrarCorrecto
-
-registrarCorrecto = function(player, palabra)
-    fonoEncolarProduccion(palabra)
-    registrarCorrectoBaseEvaluacion(player, palabra)
-end
-
-local registrarErrorBaseEvaluacion = registrarError
-
-registrarError = function(player, palabra, tipo)
-    fonoEncolarProduccion(palabra)
-    registrarErrorBaseEvaluacion(player, palabra, tipo)
 end
 
 local fonoResultadosProduccion = {
