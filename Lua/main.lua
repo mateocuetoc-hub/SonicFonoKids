@@ -5,9 +5,13 @@ local registrarError
 local fonoRegistrarDetallePar
 local fonoEncolarProduccion
 local fonoAvanzarPares
+local fonoPrepararEvaluacionPar
+local fonoRegistrarProduccion
+local fonoEsActividadPares
+local fonoPares
 
 print("====================================")
-print("Sonic FonoKids v0.0.3 cargado")
+print("Sonic FonoKids v0.0.4 cargado")
 print("====================================")
 
 local nombreProyecto = "Sonic FonoKids"
@@ -117,6 +121,10 @@ COM_AddCommand("fonoayuda", function(player)
 end)
 
 COM_AddCommand("fonoreset", function(player)
+    if fonoLimpiarObjetosActivos ~= nil then
+        fonoLimpiarObjetosActivos(player)
+    end
+
     iniciarSesion()
     player.rings = 20
     CONS_Printf(player, "Sesion reiniciada.")
@@ -822,7 +830,13 @@ addHook("HUD", function(v, player)
     v.drawString(hudX, hudY + 10, "OK: " .. tostring(correctos) .. "  ERR: " .. tostring(errores))
     v.drawString(hudX, hudY + 20, "INT: " .. tostring(intentos) .. "/" .. tostring(total))
 
-    if player.fono_hud_timer ~= nil and player.fono_hud_timer > 0 then
+    if fonoPares ~= nil and fonoPares.esperandoEvaluacion == true then
+        local palabraPendiente = fonoPares.palabraObjetivo or ""
+
+        v.drawString(hudX, hudY + 36, "PRODUCCION: " .. string.upper(tostring(palabraPendiente)))
+        v.drawString(hudX, hudY + 46, "1 OK  2 OMISION  3 SUST.")
+        v.drawString(hudX, hudY + 56, "4 DIST.  5 AYUDA")
+    elseif player.fono_hud_timer ~= nil and player.fono_hud_timer > 0 then
         if player.fono_hud_linea1 ~= nil then
             v.drawString(hudX, hudY + 36, player.fono_hud_linea1)
         end
@@ -1243,12 +1257,25 @@ local function fonoEsActividadVocabulario()
 end
 
 registrarCorrecto = function(player, palabra)
-    if fonoEncolarProduccion ~= nil then
-        fonoEncolarProduccion(palabra)
+    if fonoPares ~= nil
+    and fonoPares.activo == true
+    and fonoPares.esperandoEvaluacion == true then
+        CONS_Printf(player, "Primero registra la produccion oral pendiente.")
+        return
     end
 
+    local palabraProduccion = palabra
+
     if fonoRegistrarDetallePar ~= nil then
-        fonoRegistrarDetallePar("correcto", palabra, "")
+        local palabraEsperada = fonoRegistrarDetallePar("correcto", palabra, "")
+
+        if palabraEsperada ~= nil and palabraEsperada ~= "desconocida" then
+            palabraProduccion = palabraEsperada
+        end
+    end
+
+    if fonoEncolarProduccion ~= nil then
+        fonoEncolarProduccion(palabraProduccion)
     end
 
     if sesion.completado == true then
@@ -1276,7 +1303,9 @@ registrarCorrecto = function(player, palabra)
         CONS_Printf(player, "Actividad completada. Escribe fonoreporte para ver el reporte.")
     end
 
-    if revisarCierreActividad ~= nil then
+    local actividadPares = fonoEsActividadPares ~= nil and fonoEsActividadPares() == true
+
+    if actividadPares == false and revisarCierreActividad ~= nil then
         revisarCierreActividad(player)
     end
 
@@ -1290,18 +1319,31 @@ registrarCorrecto = function(player, palabra)
         crearSiguienteObjetoVocabulario(player)
     end
 
-    if fonoAvanzarPares ~= nil then
-        fonoAvanzarPares(player)
+    if actividadPares == true and fonoPrepararEvaluacionPar ~= nil then
+        fonoPrepararEvaluacionPar(player, palabraProduccion)
     end
 end
 
 registrarError = function(player, palabra, tipo)
-    if fonoEncolarProduccion ~= nil then
-        fonoEncolarProduccion(palabra)
+    if fonoPares ~= nil
+    and fonoPares.activo == true
+    and fonoPares.esperandoEvaluacion == true then
+        CONS_Printf(player, "Primero registra la produccion oral pendiente.")
+        return
     end
 
+    local palabraProduccion = palabra
+
     if fonoRegistrarDetallePar ~= nil then
-        fonoRegistrarDetallePar("error", palabra, tipo)
+        local palabraEsperada = fonoRegistrarDetallePar("error", palabra, tipo)
+
+        if palabraEsperada ~= nil and palabraEsperada ~= "desconocida" then
+            palabraProduccion = palabraEsperada
+        end
+    end
+
+    if fonoEncolarProduccion ~= nil then
+        fonoEncolarProduccion(palabraProduccion)
     end
 
     if sesion.completado == true then
@@ -1329,7 +1371,9 @@ registrarError = function(player, palabra, tipo)
         fonoMostrarFeedbackError(player, palabra)
     end
 
-    if revisarCierreActividad ~= nil then
+    local actividadPares = fonoEsActividadPares ~= nil and fonoEsActividadPares() == true
+
+    if actividadPares == false and revisarCierreActividad ~= nil then
         revisarCierreActividad(player)
     end
 
@@ -1343,8 +1387,8 @@ registrarError = function(player, palabra, tipo)
         crearSiguienteObjetoVocabulario(player)
     end
 
-    if fonoAvanzarPares ~= nil then
-        fonoAvanzarPares(player)
+    if actividadPares == true and fonoPrepararEvaluacionPar ~= nil then
+        fonoPrepararEvaluacionPar(player, palabraProduccion)
     end
 end
 
@@ -1672,7 +1716,7 @@ end
 local fonoProgramarSiguientePar
 local crearSiguienteParFono
 
-local fonoPares = {
+fonoPares = {
     activo = false,
     indice = 1,
     objetivo = "MA",
@@ -1680,7 +1724,10 @@ local fonoPares = {
     objetos = {},
     esperandoSiguiente = false,
     ticsEspera = 0,
-    playerEspera = nil
+    playerEspera = nil,
+    esperandoEvaluacion = false,
+    palabraObjetivo = nil,
+    playerEvaluacion = nil
 }
 
 local function fonoLimpiarObjetosPares()
@@ -1704,6 +1751,9 @@ local function fonoLimpiarObjetosPares()
     fonoPares.esperandoSiguiente = false
     fonoPares.ticsEspera = 0
     fonoPares.playerEspera = nil
+    fonoPares.esperandoEvaluacion = false
+    fonoPares.palabraObjetivo = nil
+    fonoPares.playerEvaluacion = nil
 end
 
 -- Extendemos la limpieza general para que tambien corte el modo de pares.
@@ -1818,24 +1868,55 @@ local function fonoIniciarParesMA(player)
     CONS_Printf(player, " ")
     CONS_Printf(player, "Apareceran dos opciones al mismo tiempo.")
     CONS_Printf(player, "El nino debe tocar solo una.")
-    CONS_Printf(player, "Al final se genera el reporte automaticamente.")
+    CONS_Printf(player, "Despues de elegir, registra la produccion oral con 1-5.")
+    CONS_Printf(player, "El reporte aparece tras evaluar la ultima palabra.")
     CONS_Printf(player, "====================================")
 
     crearSiguienteParFono(player)
 end
 
-fonoAvanzarPares = function(player)
-    if fonoPares ~= nil and fonoPares.activo == true then
-        fonoLimpiarObjetosPares()
+fonoPrepararEvaluacionPar = function(player, palabraObjetivo)
+    if fonoPares == nil or fonoPares.activo ~= true then
+        return
+    end
 
-        if sesion.completado == true then
-            fonoPares.activo = false
-            return
+    if fonoPares.esperandoEvaluacion == true then
+        return
+    end
+
+    fonoLimpiarObjetosPares()
+
+    fonoPares.esperandoEvaluacion = true
+    fonoPares.palabraObjetivo = tostring(palabraObjetivo or "")
+    fonoPares.playerEvaluacion = player
+
+    CONS_Printf(player, "Produccion pendiente: " .. string.upper(fonoPares.palabraObjetivo))
+    CONS_Printf(player, "Evaluadora: presiona 1-5 o usa fonoproduccion <1-5>.")
+
+    if fonoSetHud ~= nil then
+        fonoSetHud(player, "PRODUCCION: " .. string.upper(fonoPares.palabraObjetivo), "1-5 PARA REGISTRAR", TICRATE * 60)
+    end
+end
+
+fonoAvanzarPares = function(player)
+    if fonoPares == nil or fonoPares.activo ~= true then
+        return
+    end
+
+    fonoLimpiarObjetosPares()
+
+    if fonoPares.indice >= #fonoPares.pares then
+        fonoPares.activo = false
+
+        if revisarCierreActividad ~= nil then
+            revisarCierreActividad(player)
         end
 
-        fonoPares.indice = fonoPares.indice + 1
-        fonoProgramarSiguientePar(player)
+        return
     end
+
+    fonoPares.indice = fonoPares.indice + 1
+    fonoProgramarSiguientePar(player)
 end
 
 COM_AddCommand("fonoma2", function(player)
@@ -1862,6 +1943,7 @@ COM_AddCommand("fonoparesayuda", function(player)
     CONS_Printf(player, "Izquierda: MANO")
     CONS_Printf(player, "Derecha: PATO")
     CONS_Printf(player, "El niño toca solo una opcion.")
+    CONS_Printf(player, "Luego la evaluadora registra la produccion con 1-5.")
     CONS_Printf(player, "====================================")
 end)
 
@@ -1962,7 +2044,8 @@ local function fonoIniciarParesCategoria(player, categoria, pares, nombreNivel)
     CONS_Printf(player, " ")
     CONS_Printf(player, "Apareceran dos opciones al mismo tiempo.")
     CONS_Printf(player, "El nino debe tocar solo una.")
-    CONS_Printf(player, "Al final se genera el reporte automaticamente.")
+    CONS_Printf(player, "Despues de elegir, registra la produccion oral con 1-5.")
+    CONS_Printf(player, "El reporte aparece tras evaluar la ultima palabra.")
     CONS_Printf(player, "====================================")
 
     crearSiguienteParFono(player)
@@ -2144,7 +2227,8 @@ local function fonoIniciarParesSilaba(player, silabaObjetivo, pares, nombreNivel
     CONS_Printf(player, " ")
     CONS_Printf(player, "Apareceran dos opciones al mismo tiempo.")
     CONS_Printf(player, "El nino debe tocar solo una.")
-    CONS_Printf(player, "Al final se genera el reporte automaticamente.")
+    CONS_Printf(player, "Despues de elegir, registra la produccion oral con 1-5.")
+    CONS_Printf(player, "El reporte aparece tras evaluar la ultima palabra.")
     CONS_Printf(player, "====================================")
 
     crearSiguienteParFono(player)
@@ -2243,7 +2327,7 @@ end)
 -- Reporte detallado para modo pares
 -- ================================
 
-local function fonoEsActividadPares()
+fonoEsActividadPares = function()
     if sesion == nil then
         return false
     end
@@ -2327,6 +2411,8 @@ fonoRegistrarDetallePar = function(resultado, palabraSeleccionada, tipoError)
         resultado = resultado,
         tipo = tipoError or ""
     })
+
+    return esperado
 end
 
 local function fonoPorcentajeSesion()
@@ -3006,7 +3092,7 @@ COM_AddCommand("fonosesion", function(player, codigo, edad)
     CONS_Printf(player, "Ahora inicia una actividad, por ejemplo fonoma2.")
 end)
 
-COM_AddCommand("fonoproduccion", function(player, codigo, nota)
+fonoRegistrarProduccion = function(player, codigo, nota)
     local clave = string.lower(tostring(codigo or ""))
     local resultado = fonoResultadosProduccion[clave]
 
@@ -3014,15 +3100,26 @@ COM_AddCommand("fonoproduccion", function(player, codigo, nota)
         CONS_Printf(player, "Uso: fonoproduccion <1-5> [nota_sin_espacios]")
         CONS_Printf(player, "1 correcta | 2 omision | 3 sustitucion")
         CONS_Printf(player, "4 distorsion | 5 con ayuda")
-        return
+        return false
     end
 
     fonoAsegurarProducciones()
 
+    local actividadPares = fonoEsActividadPares ~= nil and fonoEsActividadPares() == true
+
+    if actividadPares == true then
+        if fonoPares == nil
+        or fonoPares.activo ~= true
+        or fonoPares.esperandoEvaluacion ~= true then
+            CONS_Printf(player, "No hay una evaluacion de pares pendiente.")
+            return false
+        end
+    end
+
     if #sesion.producciones_pendientes == 0 then
         CONS_Printf(player, "No hay palabras pendientes.")
         CONS_Printf(player, "Primero toca una opcion dentro de la actividad.")
-        return
+        return false
     end
 
     local palabra = table.remove(sesion.producciones_pendientes, 1)
@@ -3039,12 +3136,104 @@ COM_AddCommand("fonoproduccion", function(player, codigo, nota)
 
     CONS_Printf(player, "Produccion registrada: " .. string.upper(tostring(palabra)) .. " = " .. string.upper(resultado))
 
+    if actividadPares == true then
+        fonoPares.esperandoEvaluacion = false
+        fonoPares.palabraObjetivo = nil
+        fonoPares.playerEvaluacion = nil
+
+        if player ~= nil then
+            player.fono_hud_timer = 0
+            player.fono_hud_linea1 = nil
+            player.fono_hud_linea2 = nil
+        end
+
+        if fonoAvanzarPares ~= nil then
+            fonoAvanzarPares(player)
+        end
+
+        return true
+    end
+
     if #sesion.producciones_pendientes > 0 then
         CONS_Printf(player, "Siguiente pendiente: " .. string.upper(tostring(sesion.producciones_pendientes[1])))
     elseif sesion.completado == true then
         CONS_Printf(player, "Todas las producciones pendientes fueron registradas.")
         CONS_Printf(player, "Actualizando reporte descriptivo...")
         mostrarReporteDescriptivo(player)
+    end
+
+    return true
+end
+
+COM_AddCommand("fonoproduccion", function(player, codigo, nota)
+    fonoRegistrarProduccion(player, codigo, nota)
+end)
+
+COM_AddCommand("fono1", function(player)
+    fonoRegistrarProduccion(player, "1", "")
+end)
+
+COM_AddCommand("fono2", function(player)
+    fonoRegistrarProduccion(player, "2", "")
+end)
+
+COM_AddCommand("fono3", function(player)
+    fonoRegistrarProduccion(player, "3", "")
+end)
+
+COM_AddCommand("fono4", function(player)
+    fonoRegistrarProduccion(player, "4", "")
+end)
+
+COM_AddCommand("fono5", function(player)
+    fonoRegistrarProduccion(player, "5", "")
+end)
+
+local fonoTeclasProduccion = {
+    ["1"] = "1",
+    ["2"] = "2",
+    ["3"] = "3",
+    ["4"] = "4",
+    ["5"] = "5",
+    ["KEYPAD1"] = "1",
+    ["KEYPAD2"] = "2",
+    ["KEYPAD3"] = "3",
+    ["KEYPAD4"] = "4",
+    ["KEYPAD5"] = "5",
+    ["NUMPAD1"] = "1",
+    ["NUMPAD2"] = "2",
+    ["NUMPAD3"] = "3",
+    ["NUMPAD4"] = "4",
+    ["NUMPAD5"] = "5"
+}
+
+addHook("KeyDown", function(evento)
+    if evento == nil or evento.repeated == true then
+        return
+    end
+
+    if sesion == nil
+    or fonoPares == nil
+    or fonoPares.activo ~= true
+    or fonoPares.esperandoEvaluacion ~= true
+    or sesion.producciones_pendientes == nil
+    or #sesion.producciones_pendientes == 0 then
+        return
+    end
+
+    local nombreTecla = string.upper(tostring(evento.name or ""))
+    local codigo = fonoTeclasProduccion[nombreTecla]
+
+    if codigo == nil then
+        return
+    end
+
+    if consoleplayer == nil then
+        return
+    end
+
+    if fonoRegistrarProduccion(consoleplayer, codigo, "") == true then
+        return true
     end
 end)
 
