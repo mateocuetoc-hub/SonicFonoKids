@@ -2,15 +2,15 @@
 
 **Sonic FonoKids** es un mod educativo experimental para **Sonic Robo Blast 2 (SRB2)** que transforma actividades de conciencia fonológica y vocabulario en interacciones simples dentro del juego.
 
-El proyecto combina programación y Fonoaudiología para construir una experiencia infantil clara, positiva y fácil de probar. Actualmente permite presentar pictogramas, escoger entre dos alternativas, registrar respuestas y generar reportes descriptivos de la sesión.
+El proyecto combina programación y Fonoaudiología para construir una experiencia infantil clara, positiva y fácil de probar. Actualmente permite presentar pictogramas, escoger entre dos alternativas, registrar por separado la selección visual y la producción oral observada, y generar reportes descriptivos de la sesión.
 
 > [!IMPORTANT]
 > Sonic FonoKids no diagnostica, no reemplaza una evaluación fonoaudiológica y no entrega conclusiones clínicas. Los resultados describen únicamente lo ocurrido dentro del videojuego y deben ser interpretados por una persona formada en el área.
 
 ## Estado actual
 
-Versión del mod: **v0.0.3 experimental**  
-Última actualización del README: **22 de julio de 2026**
+Versión del mod: **v0.0.4 experimental**<br>
+Última actualización del README: **16 de agosto de 2026**
 
 | Área | Estado | Avance disponible |
 |---|---:|---|
@@ -18,13 +18,25 @@ Versión del mod: **v0.0.3 experimental**
 | Actividades fonológicas | ✅ Funcional | Sílabas iniciales `MA`, `PA` y `BA` |
 | Elección entre pares | ✅ Funcional | Dos pictogramas simultáneos con alternancia de lado correcto |
 | Vocabulario | ✅ Funcional | Categorías animales, comidas y transportes |
-| HUD y feedback | ✅ Funcional | Objetivo, alternativas, aciertos, errores e intentos |
+| HUD y feedback | ✅ Funcional | Objetivo, alternativas, progreso y guía de evaluación oral `1–5` |
 | Pictogramas | ✅ Integrados | 18 palabras con sprites propios |
 | Reportes | ✅ Funcional | Reporte en consola, detalle por par y salida tipo JSON |
-| Evaluación descriptiva oral | 🧪 En prueba | Registro manual de producción correcta, omisión, sustitución, distorsión o ayuda |
+| Evaluación descriptiva oral | ✅ Flujo guiado | Pausa tras cada elección y registro manual con teclado o comandos `1–5` |
 | Herramienta externa | ✅ Funcional | Generador de reporte `.txt` en Python |
 | Mapa propio | 🧪 Bosquejo jugable | `MAP01.wad` con cuatro salas y tres pasillos, sin enemigos ni precipicios |
+| Demostración académica | ✅ Preparada | Recorrido breve con actividad, observación oral y reporte automático |
 | Integración automática al mapa | ⏳ Pendiente | Las actividades todavía se inician mediante comandos de consola |
+
+## Qué demuestra la versión v0.0.4
+
+El modo recomendado presenta un par de pictogramas, registra cuál fue tocado y se detiene antes de avanzar. Durante esa pausa, una persona adulta observa la producción oral del participante y la clasifica con las teclas `1` a `5`. Sólo después de ese registro aparece el siguiente par.
+
+Esto permite conservar dos datos diferentes:
+
+- **selección visual:** qué pictograma escogió el participante y si correspondía al objetivo;
+- **producción oral observada:** cómo produjo la palabra objetivo según el registro manual de la evaluadora.
+
+El mod no escucha ni analiza la voz automáticamente. Las categorías son descriptivas, dependen de la observación humana y no constituyen un diagnóstico.
 
 ## Objetivos educativos
 
@@ -145,18 +157,11 @@ git clone https://github.com/mateocuetoc-hub/SonicFonoKids.git
 cd SonicFonoKids
 ```
 
-Para probar el bosquejo jugable de `MAP01` antes de que llegue a `main`:
+Si el repositorio ya estaba clonado, actualiza la rama estable antes de compilar:
 
 ```bash
-git fetch origin
-git switch --track origin/feature/bosquejo-map01
-```
-
-Si la rama ya existe localmente:
-
-```bash
-git switch feature/bosquejo-map01
-git pull --ff-only origin feature/bosquejo-map01
+cd ~/SRB2Mods/SonicFonoKids
+git pull --ff-only origin main
 ```
 
 ## Compilar el PK3
@@ -196,24 +201,69 @@ devmode 1
 map MAP01
 ```
 
-## Prueba rápida recomendada
+## Demo rápida recomendada
 
-Ya dentro de `MAP01`, limpia cualquier objeto anterior e inicia una actividad:
+La demostración principal dura aproximadamente entre tres y cinco minutos. Una persona controla a Sonic y toca los pictogramas; una persona adulta observa la producción oral y la registra con el teclado.
+
+### 1. Preparar una sesión anónima
 
 ```text
 fonosalalimpia
+fonosesion Demo_001 5a0m
 fonoma2
 ```
 
-Después puedes probar vocabulario y revisar los datos:
+`Demo_001` es un identificador ficticio y `5a0m` representa una edad de cinco años y cero meses. No se deben utilizar nombres reales.
+
+### 2. Realizar la actividad
+
+El primer par es `MANO / PATO` y el segundo es `BALA / MAPA`. Después de tocar una opción, el juego retira los pictogramas y espera el registro de la producción oral.
+
+Con la consola cerrada, la evaluadora presiona una tecla del `1` al `5`. También puede utilizar `fonoproduccion <1-5>` desde la consola. El siguiente par sólo aparece después de completar este paso.
+
+### 3. Revisar los resultados
+
+Al registrar la última producción aparece automáticamente el reporte descriptivo. También están disponibles:
 
 ```text
-fonosalalimpia
-fonovocab2
 fonoparesdetalle
+fonoproducciones
 fonoreporte
 fonojson
 ```
+
+Para demostrar vocabulario en una segunda sesión:
+
+```text
+fonosesion Demo_002 5a0m
+fonovocab2
+```
+
+> [!TIP]
+> `fonosesion` comienza un registro nuevo y elimina los resultados actuales. Ejecuta `fonojson` y copia su salida antes de iniciar otra sesión si deseas conservar los datos.
+
+### Recuperación rápida durante una demostración
+
+Si quedan objetos activos o se necesita repetir la prueba:
+
+```text
+fonosalalimpia
+fonoreset
+fonoma2
+```
+
+### Prueba de control de actividades
+
+Para comprobar rápidamente todos los modos de pares, estas son las respuestas objetivo en orden:
+
+| Actividad | Comando | Palabras objetivo |
+|---|---|---|
+| Sílaba `MA` | `fonoma2` | `MANO` → `MAPA` |
+| Sílaba `PA` | `fonopa2` | `PATO` → `PALA` → `PAPA` |
+| Sílaba `BA` | `fonoba2` | `BALA` → `BARCO` → `BANCO` |
+| Animales | `fonovocab2` | `GATO` → `PERRO` → `PATO` |
+| Comidas | `fonocomida2` | `PAN` → `QUESO` → `MANZANA` |
+| Transportes | `fonotransporte2` | `AUTO` → `BUS` → `TREN` |
 
 ## Comandos principales
 
@@ -255,9 +305,10 @@ fonojson
 | `fonocopia` | Explica cómo copiar la salida de `fonojson` |
 | `fonoreset` | Reinicia los datos de la sesión |
 | `fonoevaluacion` | Muestra el flujo de evaluación descriptiva oral |
-| `fonosesion` | Prepara una sesión con código anónimo y edad |
+| `fonosesion <código> <edad>` | Reinicia y prepara una sesión con identificador anónimo y edad |
 | `fonoproduccion` | Registra manualmente una producción oral con códigos del 1 al 5 |
-| `fonoproducciondeshacer` | Deshace el último registro oral |
+| `fono1` a `fono5` | Alternativa por consola para registrar rápidamente cada categoría oral |
+| `fonoproducciondeshacer` | Deshace el último registro oral en los modos compatibles |
 | `fonoproducciones` | Muestra el resumen de producciones observadas |
 | `fonosprites` | Lista las palabras con sprite |
 | `fonospritecheck` | Comprueba estados y objetos visuales activos |
@@ -274,7 +325,15 @@ OK: 0  ERR: 0
 INT: 0/2
 ```
 
-El feedback usa mensajes breves y positivos. No aplica castigos fuertes ni presenta conclusiones clínicas; indica si la palabra coincide con la sílaba o categoría trabajada y prepara el siguiente par después de una pausa corta.
+Después de seleccionar un pictograma, cambia a la etapa de producción oral:
+
+```text
+PRODUCCION: MANO
+1 OK  2 OMISION  3 SUST.
+4 DIST.  5 AYUDA
+```
+
+El feedback usa mensajes breves y positivos. No aplica castigos fuertes ni presenta conclusiones clínicas; indica si la palabra coincide con la sílaba o categoría trabajada y espera el registro oral antes de preparar el siguiente par.
 
 ## Reportes descriptivos
 
@@ -307,7 +366,35 @@ La plantilla `Reports/prompt_reporte_ia.md` ayuda a redactar un informe externo 
 
 ### Registro descriptivo de producción oral
 
-La evaluadora prepara la sesión con un código anónimo y la edad, inicia una actividad y registra manualmente lo que escucha después de cada elección:
+Los números que aparecen después de escoger un pictograma no son una nota ni una segunda respuesta del participante. Son categorías para que una persona adulta registre manualmente cómo escuchó la palabra objetivo.
+
+| Tecla | Categoría | Uso descriptivo | Ejemplo sencillo |
+|---:|---|---|---|
+| `1` | Correcta | La palabra objetivo se produce de manera adecuada para el registro de la actividad | Objetivo `MANO` → dice “mano” |
+| `2` | Omisión | No produce la palabra o se omite una parte relevante | Objetivo `MANO` → no responde o deja una parte sin producir |
+| `3` | Sustitución | Cambia un sonido o reemplaza la producción esperada | Objetivo `MANO` → dice “pano” |
+| `4` | Distorsión | La palabra es reconocible, pero algún sonido se percibe impreciso o alterado | Intenta decir `MANO`, con una realización imprecisa |
+| `5` | Con ayuda | Produce la palabra después de recibir un modelo, repetición o apoyo | La persona adulta modela “mano” y el participante la repite |
+
+El flujo guiado funciona así:
+
+```text
+El participante toca una opción
+              ↓
+El juego registra la selección visual
+              ↓
+El HUD muestra la palabra objetivo pendiente
+              ↓
+La persona adulta escucha la producción oral
+              ↓
+Presiona 1, 2, 3, 4 o 5
+              ↓
+Aparece el siguiente par o el reporte final
+```
+
+La selección visual y la producción oral se guardan por separado. Por ejemplo, si el participante toca `PATO` cuando la respuesta esperada era `MANO`, el detalle de pares registra la selección incorrecta y el HUD solicita observar la producción de `MANO`.
+
+La evaluadora prepara la sesión con un código anónimo y la edad, inicia una actividad y registra lo que escucha después de cada elección:
 
 ```text
 fonosesion Nino_002 5a4m
@@ -320,33 +407,31 @@ fonoproduccion 4       // distorsión
 fonoproduccion 5       // producción con ayuda
 ```
 
-`fonoproducciones` muestra el resumen y `fonoproducciondeshacer` permite corregir el último registro. Los resultados también aparecen en `fonoreporte`, `fonojson` y el reporte `.txt` generado por Python. Este registro depende de la observación humana y no constituye diagnóstico.
+Durante una evaluación pendiente también se puede presionar directamente `1`, `2`, `3`, `4` o `5` con la consola cerrada. Si el teclado no registra la pulsación, se puede abrir la consola y ejecutar `fono1`, `fono2`, `fono3`, `fono4` o `fono5`.
+
+`fonoproducciones` muestra el resumen. Los resultados también aparecen en `fonoreporte`, `fonojson` y el reporte `.txt` generado por Python. Este registro depende de la observación humana y no constituye diagnóstico.
 
 ## Flujo de datos
 
 ```text
-Actividad en SRB2
-      ↓
-Registro de intentos, aciertos, errores y ayudas
-      ↓
-fonoreporte / fonoparesdetalle
-      ↓
-fonojson
-      ↓
-Tools/generar_reporte.py
-      ↓
-Revisión por una persona del área fonoaudiológica
+Elección entre dos pictogramas
+              ↓
+Registro de selección visual
+              ↓
+Observación y registro oral manual (1–5)
+              ↓
+Reporte descriptivo + detalle por par
+              ↓
+Salida estructurada con fonojson
+              ↓
+Reporte externo con Tools/generar_reporte.py
+              ↓
+Revisión responsable por una persona del área
 ```
 
-## Ramas de trabajo
+## Desarrollo y versiones
 
-| Rama | Uso actual |
-|---|---|
-| `main` | Base estable del proyecto |
-| `feature/mapa-fonokids` | Integración inicial de mapas al PK3 y documentación de diseño |
-| `feature/bosquejo-map01` | Bosquejo jugable actual de cuatro salas |
-
-No se recomienda hacer cambios experimentales directamente en `main`. El mapa debe seguir probándose en su rama antes de integrarlo a la base estable.
+La rama `main` contiene la versión estable utilizada para la demostración. Los cambios de lógica deben probarse antes de publicarse y los respaldos locales deben mantenerse fuera de `Lua/` para evitar que SRB2 cargue archivos duplicados.
 
 ## Problemas resueltos durante el desarrollo
 
@@ -356,6 +441,9 @@ No se recomienda hacer cambios experimentales directamente en `main`. El mapa de
 - separación lateral y altura de los pares de pictogramas;
 - limpieza de objetos entre actividades;
 - pausa antes de mostrar el siguiente par;
+- espera obligatoria del registro oral antes de avanzar;
+- registro separado de selección visual y producción oral;
+- cierre de sesión sólo después de evaluar la última palabra;
 - inclusión de `Maps/*.wad` dentro del PK3;
 - cierre de SRB2 por un mapa sin nodos válidos;
 - ejecución de Zone Builder en Linux Mint mediante Wine.
@@ -370,7 +458,7 @@ No se recomienda hacer cambios experimentales directamente en `main`. El mapa de
 - ampliar el banco de sílabas, palabras y categorías;
 - mejorar la exportación automática de sesiones;
 - realizar pruebas de usabilidad con supervisión fonoaudiológica;
-- preparar una versión de demostración académica.
+- grabar y documentar una demostración académica breve.
 
 ## Privacidad y uso responsable
 
