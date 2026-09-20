@@ -1,7 +1,11 @@
-# Mapa Sonic FonoKids
+# Mapa Sonic FonoKids (`MAPA0`)
 
 ## Objetivo
 Crear un mapa educativo simple para probar las actividades fonoaudiologicas del mod Sonic FonoKids.
+
+El archivo fuente se conserva como `Maps/MAP01.wad`, pero `build.sh` cambia su
+marcador interno a `MAPA0` al construir el PK3. De este modo, `MAP01` queda libre
+para usar Greenflower Zone Act 1 como premio de juego temporizado.
 
 ## Estructura inicial
 1. Sala de inicio
@@ -22,3 +26,5 @@ Crear un mapa educativo simple para probar las actividades fonoaudiologicas del 
 - fonovocab2
 - fonospritecheck
 - fonoreporte
+- fonoaventura Demo_001 5a0m
+- fonojuegotest 30
