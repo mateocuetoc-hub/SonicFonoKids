@@ -9,9 +9,11 @@ local fonoPrepararEvaluacionPar
 local fonoRegistrarProduccion
 local fonoEsActividadPares
 local fonoPares
+local fonoFlujoSesion
+local fonoReiniciarFlujo
 
 print("====================================")
-print("Sonic FonoKids v0.0.4 cargado")
+print("Sonic FonoKids v0.0.5 cargado")
 print("====================================")
 
 local nombreProyecto = "Sonic FonoKids"
@@ -75,6 +77,13 @@ local function mostrarReporte(player)
 end
 
 addHook("MapLoad", function()
+    if fonoFlujoSesion ~= nil
+    and (fonoFlujoSesion.conservarSesion == true
+    or fonoFlujoSesion.fase == "juego"
+    or fonoFlujoSesion.fase == "regresando") then
+        return
+    end
+
     iniciarSesion()
 end)
 
@@ -83,12 +92,20 @@ addHook("PlayerSpawn", function(player)
         iniciarSesion()
     end
 
+    if fonoFlujoSesion ~= nil
+    and (fonoFlujoSesion.fase == "cambiando_juego"
+    or fonoFlujoSesion.fase == "juego"
+    or fonoFlujoSesion.fase == "regresando"
+    or fonoFlujoSesion.fase == "finalizada") then
+        return
+    end
+
     player.rings = 20
 
     CONS_Printf(player, "====================================")
     CONS_Printf(player, "Sonic FonoKids activo")
     CONS_Printf(player, "Objetivo: trabajar silaba inicial " .. sesion.objetivo)
-    CONS_Printf(player, "Usa fononivel1auto para iniciar la actividad educativa.")
+    CONS_Printf(player, "Usa fonoaventura Demo_001 5a0m para iniciar el recorrido.")
     CONS_Printf(player, "====================================")
 end)
 
@@ -126,6 +143,11 @@ COM_AddCommand("fonoreset", function(player)
     end
 
     iniciarSesion()
+
+    if fonoReiniciarFlujo ~= nil then
+        fonoReiniciarFlujo()
+    end
+
     player.rings = 20
     CONS_Printf(player, "Sesion reiniciada.")
 end)
@@ -807,6 +829,12 @@ end)
 
 addHook("HUD", function(v, player)
     if player == nil then
+        return
+    end
+
+    if fonoFlujoSesion ~= nil
+    and (fonoFlujoSesion.fase == "juego"
+    or fonoFlujoSesion.fase == "regresando") then
         return
     end
 
@@ -1579,8 +1607,9 @@ COM_AddCommand("fonodemo", function(player)
     CONS_Printf(player, "conciencia fonologica y vocabulario infantil.")
     CONS_Printf(player, " ")
     CONS_Printf(player, "Modo recomendado actual:")
-    CONS_Printf(player, "Actividades de eleccion entre 2 opciones.")
-    CONS_Printf(player, "El nino observa dos alternativas y toca solo una.")
+    CONS_Printf(player, "fonoaventura Demo_001 5a0m")
+    CONS_Printf(player, "Encadena dos actividades y desbloquea juego libre.")
+    CONS_Printf(player, "El premio depende de completar, no de acertar todo.")
     CONS_Printf(player, " ")
     CONS_Printf(player, "1) Conciencia fonologica en pares:")
     CONS_Printf(player, "   fonoma2 -> silaba inicial MA")
@@ -1608,7 +1637,7 @@ COM_AddCommand("fonodemo", function(player)
     CONS_Printf(player, "====================================")
 
     if fonoSetHud ~= nil then
-        fonoSetHud(player, "SONIC FONOKIDS", "PRUEBA: fonoma2", TICRATE * 8)
+        fonoSetHud(player, "SONIC FONOKIDS", "PRUEBA: fonoaventura", TICRATE * 8)
     end
 end)
 
@@ -1645,6 +1674,13 @@ COM_AddCommand("fonocomandos", function(player)
     CONS_Printf(player, "Presentacion:")
     CONS_Printf(player, "fonodemo        -> guia general del proyecto")
     CONS_Printf(player, "fonocomandos    -> lista completa de comandos")
+    CONS_Printf(player, " ")
+    CONS_Printf(player, "Aventura recomendada:")
+    CONS_Printf(player, "fonoaventura     -> actividades + juego libre")
+    CONS_Printf(player, "fonoaventuraayuda -> instrucciones del recorrido")
+    CONS_Printf(player, "fonotiempo       -> configurar 1 a 10 minutos")
+    CONS_Printf(player, "fonofinjuego     -> terminar el premio antes")
+    CONS_Printf(player, "fonoresumen      -> resumen de actividades")
     CONS_Printf(player, " ")
     CONS_Printf(player, "Pares fonologicos:")
     CONS_Printf(player, "fonoma2         -> elegir palabra con MA")
@@ -3086,6 +3122,10 @@ COM_AddCommand("fonosesion", function(player, codigo, edad)
 
     iniciarSesion()
 
+    if fonoReiniciarFlujo ~= nil then
+        fonoReiniciarFlujo()
+    end
+
     CONS_Printf(player, "Sesion descriptiva preparada.")
     CONS_Printf(player, "Codigo anonimo: " .. tostring(sesion.jugador))
     CONS_Printf(player, "Edad: " .. tostring(sesion.edad))
@@ -3281,3 +3321,478 @@ mostrarReporteDescriptivo = function(player)
     mostrarReporteDescriptivoBaseEvaluacion(player)
     fonoMostrarProducciones(player)
 end
+
+
+-- ==========================================
+-- AVENTURA EDUCATIVA Y PREMIO DE JUEGO LIBRE
+-- ==========================================
+-- Flujo v0.0.5:
+--   MAPA0 -> dos actividades guiadas -> MAP01 por tiempo limitado -> MAPA0.
+-- El premio depende de completar las actividades, no de acertarlas todas.
+
+fonoFlujoSesion = {
+    activo = false,
+    fase = "inactiva",
+    indiceActividad = 0,
+    resultados = {},
+    actividadCapturada = false,
+    ticsTransicion = 0,
+    playerTransicion = nil,
+    duracionJuegoSegundos = 300,
+    tiempoJuegoRestante = 0,
+    avisoTreintaSegundos = false,
+    conservarSesion = false,
+    mapaEducativo = 100,
+    mapaJuego = 1,
+    reporteFinalPendiente = false,
+    salidaConfigurada = false
+}
+
+local function fonoCopiarLista(lista)
+    local copia = {}
+
+    if lista == nil then
+        return copia
+    end
+
+    for i = 1, #lista do
+        local elemento = lista[i]
+
+        if type(elemento) == "table" then
+            local elementoCopia = {}
+
+            for clave, valor in pairs(elemento) do
+                elementoCopia[clave] = valor
+            end
+
+            table.insert(copia, elementoCopia)
+        else
+            table.insert(copia, elemento)
+        end
+    end
+
+    return copia
+end
+
+local function fonoCapturarActividadActual()
+    if sesion == nil then
+        return
+    end
+
+    table.insert(fonoFlujoSesion.resultados, {
+        actividad = tostring(sesion.actividad or "sin_actividad"),
+        objetivo = tostring(sesion.objetivo or "sin_objetivo"),
+        intentos = sesion.intentos or 0,
+        correctos = sesion.correctos or 0,
+        errores = sesion.errores or 0,
+        ayudas = sesion.ayudas or 0,
+        pares_detalle = fonoCopiarLista(sesion.pares_detalle),
+        producciones_detalle = fonoCopiarLista(sesion.producciones_detalle)
+    })
+end
+
+local function fonoMostrarResumenAventura(player)
+    local totalIntentos = 0
+    local totalCorrectos = 0
+    local totalErrores = 0
+    local totalProducciones = 0
+
+    CONS_Printf(player, "========== RESUMEN DE AVENTURA ==========")
+    CONS_Printf(player, "Participante: " .. tostring(fonoDatosParticipante.codigo))
+    CONS_Printf(player, "Edad registrada: " .. tostring(fonoDatosParticipante.edad))
+    CONS_Printf(player, "Actividades completadas: " .. tostring(#fonoFlujoSesion.resultados))
+
+    for i = 1, #fonoFlujoSesion.resultados do
+        local resultado = fonoFlujoSesion.resultados[i]
+        local producciones = resultado.producciones_detalle or {}
+
+        totalIntentos = totalIntentos + (resultado.intentos or 0)
+        totalCorrectos = totalCorrectos + (resultado.correctos or 0)
+        totalErrores = totalErrores + (resultado.errores or 0)
+        totalProducciones = totalProducciones + #producciones
+
+        CONS_Printf(player, "Actividad " .. tostring(i) .. ": " .. tostring(resultado.objetivo))
+        CONS_Printf(player, "  Intentos: " .. tostring(resultado.intentos or 0)
+            .. " | correctos: " .. tostring(resultado.correctos or 0)
+            .. " | errores: " .. tostring(resultado.errores or 0))
+        CONS_Printf(player, "  Producciones registradas: " .. tostring(#producciones))
+    end
+
+    CONS_Printf(player, "Totales de seleccion:")
+    CONS_Printf(player, "  Intentos: " .. tostring(totalIntentos))
+    CONS_Printf(player, "  Correctos: " .. tostring(totalCorrectos))
+    CONS_Printf(player, "  Errores: " .. tostring(totalErrores))
+    CONS_Printf(player, "  Producciones observadas: " .. tostring(totalProducciones))
+    CONS_Printf(player, "Juego libre: " .. tostring(fonoFlujoSesion.duracionJuegoSegundos) .. " segundos configurados")
+    CONS_Printf(player, "Registro descriptivo; no constituye diagnostico.")
+    CONS_Printf(player, "=========================================")
+end
+
+fonoReiniciarFlujo = function()
+    local duracionConfigurada = fonoFlujoSesion.duracionJuegoSegundos or 300
+
+    fonoFlujoSesion.activo = false
+    fonoFlujoSesion.fase = "inactiva"
+    fonoFlujoSesion.indiceActividad = 0
+    fonoFlujoSesion.resultados = {}
+    fonoFlujoSesion.actividadCapturada = false
+    fonoFlujoSesion.ticsTransicion = 0
+    fonoFlujoSesion.playerTransicion = nil
+    fonoFlujoSesion.duracionJuegoSegundos = duracionConfigurada
+    fonoFlujoSesion.tiempoJuegoRestante = 0
+    fonoFlujoSesion.avisoTreintaSegundos = false
+    fonoFlujoSesion.conservarSesion = false
+    fonoFlujoSesion.reporteFinalPendiente = false
+    fonoFlujoSesion.salidaConfigurada = false
+end
+
+local fonoActividadesAventura = {
+    {
+        nombre = "Silaba inicial MA",
+        iniciar = function(player)
+            fonoIniciarParesSilaba(player, "MA", {
+                {
+                    izquierda = "mano",
+                    derecha = "pato"
+                },
+                {
+                    izquierda = "bala",
+                    derecha = "mapa"
+                }
+            }, "AVENTURA 1/2: Silaba inicial MA")
+        end
+    },
+    {
+        nombre = "Vocabulario ANIMALES",
+        iniciar = function(player)
+            fonoIniciarParesCategoria(player, "animal", {
+                {
+                    izquierda = "gato",
+                    derecha = "mesa"
+                },
+                {
+                    izquierda = "auto",
+                    derecha = "perro"
+                },
+                {
+                    izquierda = "pato",
+                    derecha = "sopa"
+                }
+            }, "AVENTURA 2/2: Vocabulario ANIMALES")
+        end
+    }
+}
+
+local function fonoIniciarActividadAventura(player, indice)
+    local actividad = fonoActividadesAventura[indice]
+
+    if actividad == nil then
+        return false
+    end
+
+    fonoFlujoSesion.indiceActividad = indice
+    fonoFlujoSesion.actividadCapturada = false
+    fonoFlujoSesion.fase = "educativa"
+    fonoFlujoSesion.playerTransicion = player
+
+    CONS_Printf(player, "Iniciando actividad " .. tostring(indice)
+        .. " de " .. tostring(#fonoActividadesAventura)
+        .. ": " .. tostring(actividad.nombre))
+
+    actividad.iniciar(player)
+    return true
+end
+
+local function fonoIrAlJuegoLibre(player)
+    if fonoFlujoSesion.fase == "cambiando_juego"
+    or fonoFlujoSesion.fase == "juego" then
+        return
+    end
+
+    fonoFlujoSesion.fase = "cambiando_juego"
+    fonoFlujoSesion.conservarSesion = true
+    fonoFlujoSesion.playerTransicion = player
+
+    CONS_Printf(player, "Todas las actividades fueron completadas.")
+    CONS_Printf(player, "Premio desbloqueado: juego libre en Greenflower Zone Act 1.")
+    CONS_Printf(player, "Duracion: " .. tostring(fonoFlujoSesion.duracionJuegoSegundos) .. " segundos.")
+
+    G_SetCustomExitVars(fonoFlujoSesion.mapaJuego, 1)
+    G_ExitLevel()
+end
+
+local function fonoRegresarAlMapaEducativo(player, motivo)
+    if fonoFlujoSesion.fase == "regresando"
+    or fonoFlujoSesion.fase == "finalizada" then
+        return
+    end
+
+    fonoFlujoSesion.fase = "regresando"
+    fonoFlujoSesion.conservarSesion = true
+    fonoFlujoSesion.salidaConfigurada = true
+
+    if player ~= nil then
+        CONS_Printf(player, tostring(motivo or "Juego libre finalizado."))
+        CONS_Printf(player, "Regresando a Sonic FonoKids...")
+    end
+
+    G_SetCustomExitVars(fonoFlujoSesion.mapaEducativo, 1)
+    G_ExitLevel()
+end
+
+local revisarCierreActividadBaseAventura = revisarCierreActividad
+
+revisarCierreActividad = function(player)
+    revisarCierreActividadBaseAventura(player)
+
+    if fonoFlujoSesion.activo ~= true
+    or fonoFlujoSesion.fase ~= "educativa"
+    or sesion.completado ~= true
+    or fonoFlujoSesion.actividadCapturada == true then
+        return
+    end
+
+    fonoFlujoSesion.actividadCapturada = true
+    fonoCapturarActividadActual()
+    fonoFlujoSesion.playerTransicion = player
+    fonoFlujoSesion.ticsTransicion = TICRATE * 4
+
+    if fonoFlujoSesion.indiceActividad < #fonoActividadesAventura then
+        fonoFlujoSesion.fase = "entre_actividades"
+        CONS_Printf(player, "Actividad guardada. La siguiente comenzara en unos segundos.")
+
+        if fonoSetHud ~= nil then
+            fonoSetHud(player, "ACTIVIDAD COMPLETADA", "PREPARANDO LA SIGUIENTE", TICRATE * 4)
+        end
+    else
+        fonoFlujoSesion.fase = "premio_listo"
+        CONS_Printf(player, "Circuito educativo completado.")
+        CONS_Printf(player, "Preparando el premio de juego libre...")
+
+        if fonoSetHud ~= nil then
+            fonoSetHud(player, "¡CIRCUITO COMPLETADO!", "PREMIO: JUEGO LIBRE", TICRATE * 4)
+        end
+    end
+end
+
+addHook("ThinkFrame", function()
+    if fonoFlujoSesion.fase == "entre_actividades"
+    or fonoFlujoSesion.fase == "premio_listo" then
+        if fonoFlujoSesion.ticsTransicion > 0 then
+            fonoFlujoSesion.ticsTransicion = fonoFlujoSesion.ticsTransicion - 1
+            return
+        end
+
+        local player = fonoFlujoSesion.playerTransicion
+
+        if player == nil or player.mo == nil or player.mo.valid == false then
+            return
+        end
+
+        if fonoFlujoSesion.fase == "entre_actividades" then
+            fonoIniciarActividadAventura(player, fonoFlujoSesion.indiceActividad + 1)
+        else
+            fonoIrAlJuegoLibre(player)
+        end
+
+        return
+    end
+
+    if fonoFlujoSesion.fase ~= "juego" then
+        return
+    end
+
+    if fonoFlujoSesion.tiempoJuegoRestante > 0 then
+        fonoFlujoSesion.tiempoJuegoRestante = fonoFlujoSesion.tiempoJuegoRestante - 1
+    end
+
+    if fonoFlujoSesion.avisoTreintaSegundos ~= true
+    and fonoFlujoSesion.tiempoJuegoRestante <= TICRATE * 30 then
+        fonoFlujoSesion.avisoTreintaSegundos = true
+
+        for player in players.iterate do
+            CONS_Printf(player, "Quedan 30 segundos de juego libre.")
+        end
+    end
+
+    if fonoFlujoSesion.tiempoJuegoRestante <= 0 then
+        fonoRegresarAlMapaEducativo(consoleplayer, "Tiempo terminado. ¡Muy bien!")
+    end
+end)
+
+addHook("MapLoad", function()
+    if fonoFlujoSesion.fase == "cambiando_juego"
+    and gamemap == fonoFlujoSesion.mapaJuego then
+        fonoFlujoSesion.fase = "juego"
+        fonoFlujoSesion.conservarSesion = false
+        fonoFlujoSesion.tiempoJuegoRestante = fonoFlujoSesion.duracionJuegoSegundos * TICRATE
+        fonoFlujoSesion.avisoTreintaSegundos = false
+        fonoFlujoSesion.salidaConfigurada = false
+        return
+    end
+
+    if fonoFlujoSesion.fase == "regresando"
+    and gamemap == fonoFlujoSesion.mapaEducativo then
+        fonoFlujoSesion.fase = "finalizada"
+        fonoFlujoSesion.conservarSesion = false
+        fonoFlujoSesion.reporteFinalPendiente = true
+        return
+    end
+
+    if fonoFlujoSesion.fase == "juego"
+    and gamemap ~= fonoFlujoSesion.mapaJuego then
+        fonoFlujoSesion.fase = "finalizada"
+        fonoFlujoSesion.conservarSesion = false
+        fonoFlujoSesion.reporteFinalPendiente = true
+    end
+end)
+
+addHook("PlayerSpawn", function(player)
+    if fonoFlujoSesion.fase == "juego" then
+        CONS_Printf(player, "========== ¡HORA DE JUGAR! ==========")
+        CONS_Printf(player, "Explora Greenflower Zone Act 1.")
+        CONS_Printf(player, "Tiempo disponible: " .. tostring(fonoFlujoSesion.duracionJuegoSegundos) .. " segundos.")
+        CONS_Printf(player, "La actividad educativa ya fue guardada.")
+        CONS_Printf(player, "=====================================")
+        return
+    end
+
+    if fonoFlujoSesion.fase == "finalizada"
+    and fonoFlujoSesion.reporteFinalPendiente == true then
+        fonoFlujoSesion.reporteFinalPendiente = false
+        player.rings = 20
+
+        CONS_Printf(player, "La aventura Sonic FonoKids finalizo correctamente.")
+        fonoMostrarResumenAventura(player)
+
+        if fonoSetHud ~= nil then
+            fonoSetHud(player, "SESION FINALIZADA", "¡GRACIAS POR JUGAR!", TICRATE * 10)
+        end
+    end
+end)
+
+addHook("PlayerThink", function(player)
+    if fonoFlujoSesion.fase ~= "juego"
+    or fonoFlujoSesion.salidaConfigurada == true then
+        return
+    end
+
+    if player.exiting then
+        fonoFlujoSesion.fase = "regresando"
+        fonoFlujoSesion.conservarSesion = true
+        fonoFlujoSesion.salidaConfigurada = true
+        G_SetCustomExitVars(fonoFlujoSesion.mapaEducativo, 1)
+        CONS_Printf(player, "¡Llegaste a la meta! Regresaremos a Sonic FonoKids.")
+    end
+end)
+
+addHook("HUD", function(v, player)
+    if fonoFlujoSesion.fase ~= "juego" then
+        return
+    end
+
+    local segundosTotales = (fonoFlujoSesion.tiempoJuegoRestante + TICRATE - 1) / TICRATE
+    local minutos = segundosTotales / 60
+    local segundos = segundosTotales % 60
+    local tiempoTexto = string.format("%02d:%02d", minutos, segundos)
+    local flags = V_SNAPTOTOP|V_SNAPTOLEFT
+
+    v.drawString(8, 8, "SONIC FONOKIDS", flags, "left")
+    v.drawString(8, 18, "JUEGO LIBRE", flags, "left")
+    v.drawString(8, 30, "TIEMPO " .. tiempoTexto, flags, "left")
+
+    if fonoFlujoSesion.tiempoJuegoRestante <= TICRATE * 30 then
+        v.drawString(8, 42, "¡ULTIMOS SEGUNDOS!", flags, "left")
+    end
+end, "game")
+
+COM_AddCommand("fonoaventura", function(player, codigo, edad)
+    if codigo == nil or codigo == "" then
+        codigo = "Demo_001"
+    end
+
+    if edad == nil or edad == "" then
+        edad = "no_registrada"
+    end
+
+    if fonoFlujoSesion.fase == "juego"
+    or fonoFlujoSesion.fase == "cambiando_juego"
+    or fonoFlujoSesion.fase == "regresando" then
+        CONS_Printf(player, "Ya hay una aventura en transicion o juego libre.")
+        return
+    end
+
+    fonoDatosParticipante.codigo = tostring(codigo)
+    fonoDatosParticipante.edad = tostring(edad)
+    fonoReiniciarFlujo()
+
+    fonoFlujoSesion.activo = true
+    fonoFlujoSesion.fase = "educativa"
+
+    CONS_Printf(player, "========== AVENTURA SONIC FONOKIDS ==========")
+    CONS_Printf(player, "Participante anonimo: " .. tostring(codigo))
+    CONS_Printf(player, "Edad: " .. tostring(edad))
+    CONS_Printf(player, "Completa dos actividades para desbloquear el juego libre.")
+    CONS_Printf(player, "No es necesario acertar todo: se premia completar el recorrido.")
+    CONS_Printf(player, "================================================")
+
+    fonoIniciarActividadAventura(player, 1)
+end)
+
+COM_AddCommand("fonotiempo", function(player, minutos)
+    local valor = tonumber(minutos)
+
+    if valor == nil then
+        CONS_Printf(player, "Uso: fonotiempo <minutos>")
+        CONS_Printf(player, "Rango permitido: 1 a 10. Valor actual: "
+            .. tostring(fonoFlujoSesion.duracionJuegoSegundos / 60) .. " minutos.")
+        return
+    end
+
+    if valor < 1 or valor > 10 then
+        CONS_Printf(player, "El tiempo debe estar entre 1 y 10 minutos.")
+        return
+    end
+
+    fonoFlujoSesion.duracionJuegoSegundos = valor * 60
+    CONS_Printf(player, "Juego libre configurado en " .. tostring(valor) .. " minutos.")
+end)
+
+COM_AddCommand("fonojuegotest", function(player, segundos)
+    local valor = tonumber(segundos) or 30
+
+    if valor < 10 then
+        valor = 10
+    elseif valor > 600 then
+        valor = 600
+    end
+
+    fonoFlujoSesion.duracionJuegoSegundos = valor
+    fonoFlujoSesion.activo = true
+    fonoIrAlJuegoLibre(player)
+end)
+
+COM_AddCommand("fonofinjuego", function(player)
+    if fonoFlujoSesion.fase ~= "juego" then
+        CONS_Printf(player, "No hay juego libre activo.")
+        return
+    end
+
+    fonoRegresarAlMapaEducativo(player, "Juego libre finalizado por la persona adulta.")
+end)
+
+COM_AddCommand("fonoresumen", function(player)
+    fonoMostrarResumenAventura(player)
+end)
+
+COM_AddCommand("fonoaventuraayuda", function(player)
+    CONS_Printf(player, "========== AVENTURA FONOKIDS ==========")
+    CONS_Printf(player, "1) map MAPA0")
+    CONS_Printf(player, "2) fonoaventura Demo_001 5a0m")
+    CONS_Printf(player, "3) Toca una opcion y registra 1-5 en cada par.")
+    CONS_Printf(player, "4) Al completar ambas actividades comienza el premio.")
+    CONS_Printf(player, "fonotiempo 5  -> configura cinco minutos")
+    CONS_Printf(player, "fonofinjuego  -> permite al adulto terminar antes")
+    CONS_Printf(player, "fonoresumen   -> muestra el resumen de la aventura")
+    CONS_Printf(player, "=======================================")
+end)
