@@ -5,6 +5,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PK3_PATH="$(dirname "$ROOT_DIR")/SonicFonoKids.pk3"
 ADDONS_DIR="$HOME/.var/app/org.srb2.SRB2/.srb2/addons"
+BUILD_DIR="$ROOT_DIR/.build"
 
 cd "$ROOT_DIR"
 
@@ -21,11 +22,26 @@ fi
 
 echo "Generando SonicFonoKids.pk3..."
 rm -f "$PK3_PATH"
+rm -rf "$BUILD_DIR"
+mkdir -p "$BUILD_DIR/Maps"
+
+# El bosquejo educativo fue creado originalmente como MAP01. Durante la
+# compilacion se cambia solo su marcador interno a MAPA0 para dejar libre
+# Greenflower Zone Act 1, que se usa como premio de juego libre.
+python3 Tools/renombrar_mapa_wad.py \
+    Maps/MAP01.wad \
+    "$BUILD_DIR/Maps/MAPA0.wad" \
+    MAP01 \
+    MAPA0
+
 zip -qr "$PK3_PATH" Lua SOC Sprites Sounds Music
 
-if compgen -G "Maps/*.wad" > /dev/null; then
-    zip -qr "$PK3_PATH" Maps/*.wad
-fi
+(
+    cd "$BUILD_DIR"
+    zip -qr "$PK3_PATH" Maps/MAPA0.wad
+)
+
+rm -rf "$BUILD_DIR"
 
 mkdir -p "$ADDONS_DIR"
 cp "$PK3_PATH" "$ADDONS_DIR/SonicFonoKids.pk3"
