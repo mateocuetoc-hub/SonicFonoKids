@@ -9,8 +9,8 @@ El proyecto combina programación y Fonoaudiología para construir una experienc
 
 ## Estado actual
 
-Versión del mod: **v0.0.4 experimental**<br>
-Última actualización del README: **16 de agosto de 2026**
+Versión del mod: **v0.0.5 experimental**<br>
+Última actualización del README: **20 de septiembre de 2026**
 
 | Área | Estado | Avance disponible |
 |---|---:|---|
@@ -23,13 +23,17 @@ Versión del mod: **v0.0.4 experimental**<br>
 | Reportes | ✅ Funcional | Reporte en consola, detalle por par y salida tipo JSON |
 | Evaluación descriptiva oral | ✅ Flujo guiado | Pausa tras cada elección y registro manual con teclado o comandos `1–5` |
 | Herramienta externa | ✅ Funcional | Generador de reporte `.txt` en Python |
-| Mapa propio | 🧪 Bosquejo jugable | `MAP01.wad` con cuatro salas y tres pasillos, sin enemigos ni precipicios |
-| Demostración académica | ✅ Preparada | Recorrido breve con actividad, observación oral y reporte automático |
-| Integración automática al mapa | ⏳ Pendiente | Las actividades todavía se inician mediante comandos de consola |
+| Mapa propio | 🧪 Bosquejo jugable | Empaquetado como `MAPA0`, con cuatro salas y tres pasillos, sin enemigos ni precipicios |
+| Aventura guiada | ✅ Funcional | Encadena conciencia fonológica y vocabulario conservando ambos resultados |
+| Juego libre | ✅ Funcional | Premio de cinco minutos en Greenflower Zone Act 1 con temporizador HUD |
+| Demostración académica | ✅ Preparada | Recorrido completo: actividades, observación oral, juego libre y resumen final |
+| Integración automática al mapa | 🧪 Parcial | `fonoaventura` automatiza el recorrido; el inicio todavía se realiza desde consola |
 
-## Qué demuestra la versión v0.0.4
+## Qué demuestra la versión v0.0.5
 
-El modo recomendado presenta un par de pictogramas, registra cuál fue tocado y se detiene antes de avanzar. Durante esa pausa, una persona adulta observa la producción oral del participante y la clasifica con las teclas `1` a `5`. Sólo después de ese registro aparece el siguiente par.
+El modo recomendado inicia una aventura breve con dos actividades: sílaba inicial `MA` y vocabulario de animales. En cada ejercicio se presentan dos pictogramas, se registra cuál fue tocado y el juego se detiene para que una persona adulta clasifique la producción oral con las teclas `1` a `5`.
+
+Al completar ambas actividades —sin exigir respuestas perfectas— se desbloquea un periodo configurable de juego libre en Greenflower Zone Act 1. Un temporizador aparece en la esquina superior izquierda, avisa cuando quedan 30 segundos y devuelve al participante al mapa educativo al terminar. El resumen conserva los resultados de las dos actividades.
 
 Esto permite conservar dos datos diferentes:
 
@@ -83,7 +87,9 @@ Los objetos aparecen frente al jugador, son tocables y entregan feedback inmedia
 
 ### Sala y mapa educativo
 
-`Maps/MAP01.wad` contiene un primer bosquejo original y jugable con:
+`Maps/MAP01.wad` contiene el archivo fuente del primer bosquejo original y jugable. Al compilar, su marcador interno se cambia automáticamente a `MAPA0` para que no sustituya el `MAP01` original de SRB2, Greenflower Zone Act 1.
+
+El mapa educativo incluye:
 
 - una sala de inicio;
 - una sala para sílabas iniciales;
@@ -101,7 +107,7 @@ El diseño está pensado como base editable. La geometría ya fue probada dentro
 - **Lua** para la lógica, comandos, actividades, HUD y registro de datos;
 - **SOC** para definiciones compatibles con SRB2;
 - **PNG / sprites `FONI*`** para los pictogramas;
-- **WAD** para `MAP01`;
+- **WAD** para el mapa educativo `MAPA0` y el nivel original `MAP01` como premio;
 - **PK3** como formato distribuible del mod;
 - **Python 3** para generar reportes externos;
 - **Bash** para automatizar la compilación;
@@ -175,17 +181,18 @@ chmod +x build.sh
 El script:
 
 1. comprueba que `Lua/` sólo contenga `main.lua`;
-2. empaqueta `Lua/`, `SOC/`, `Sprites/`, `Sounds/` y los mapas WAD disponibles;
-3. genera `~/SRB2Mods/SonicFonoKids.pk3`;
-4. copia el PK3 a la carpeta de addons de SRB2 Flatpak.
+2. genera una copia temporal del mapa cuyo marcador cambia de `MAP01` a `MAPA0`;
+3. empaqueta `Lua/`, `SOC/`, `Sprites/`, `Sounds/`, `Music/` y `Maps/MAPA0.wad`;
+4. genera `~/SRB2Mods/SonicFonoKids.pk3`;
+5. copia el PK3 a la carpeta de addons de SRB2 Flatpak.
 
 Para confirmar que el mapa quedó dentro del paquete:
 
 ```bash
-unzip -l "$HOME/.var/app/org.srb2.SRB2/.srb2/addons/SonicFonoKids.pk3" | grep -i MAP01
+unzip -l "$HOME/.var/app/org.srb2.SRB2/.srb2/addons/SonicFonoKids.pk3" | grep -i MAPA0
 ```
 
-## Abrir el juego y cargar MAP01
+## Abrir el juego y cargar el mapa educativo
 
 ```bash
 flatpak run org.srb2.SRB2 \
@@ -198,49 +205,48 @@ Abre la consola de SRB2 con la tecla situada debajo de `Esc` y ejecuta:
 
 ```text
 devmode 1
-map MAP01
+map MAPA0
 ```
 
 ## Demo rápida recomendada
 
-La demostración principal dura aproximadamente entre tres y cinco minutos. Una persona controla a Sonic y toca los pictogramas; una persona adulta observa la producción oral y la registra con el teclado.
+La demostración completa dura aproximadamente entre ocho y doce minutos, incluyendo cinco minutos de juego libre. Una persona controla a Sonic y toca los pictogramas; una persona adulta observa la producción oral y la registra con el teclado.
 
-### 1. Preparar una sesión anónima
+### 1. Iniciar la aventura con una sesión anónima
 
 ```text
-fonosalalimpia
-fonosesion Demo_001 5a0m
-fonoma2
+map MAPA0
+fonoaventura Demo_001 5a0m
 ```
 
 `Demo_001` es un identificador ficticio y `5a0m` representa una edad de cinco años y cero meses. No se deben utilizar nombres reales.
 
-### 2. Realizar la actividad
+### 2. Completar las dos actividades
 
-El primer par es `MANO / PATO` y el segundo es `BALA / MAPA`. Después de tocar una opción, el juego retira los pictogramas y espera el registro de la producción oral.
+La primera actividad trabaja la sílaba inicial `MA`; la segunda trabaja vocabulario de animales. Después de tocar una opción, el juego retira ambos pictogramas y espera el registro de la producción oral.
 
 Con la consola cerrada, la evaluadora presiona una tecla del `1` al `5`. También puede utilizar `fonoproduccion <1-5>` desde la consola. El siguiente par sólo aparece después de completar este paso.
 
-### 3. Revisar los resultados
+### 3. Jugar el premio
 
-Al registrar la última producción aparece automáticamente el reporte descriptivo. También están disponibles:
+Al registrar la última producción de cada actividad aparece su reporte descriptivo. Cuando termina la segunda actividad, el juego carga automáticamente Greenflower Zone Act 1 y comienza el temporizador de cinco minutos.
 
-```text
-fonoparesdetalle
-fonoproducciones
-fonoreporte
-fonojson
-```
-
-Para demostrar vocabulario en una segunda sesión:
+El premio se obtiene por **completar el recorrido**, no por acertar todas las respuestas. El tiempo puede ajustarse antes de iniciar:
 
 ```text
-fonosesion Demo_002 5a0m
-fonovocab2
+fonotiempo 3
 ```
+
+La persona adulta puede terminar antes con:
+
+```text
+fonofinjuego
+```
+
+Al agotarse el tiempo o llegar a la meta, Sonic vuelve a `MAPA0` y se muestra el resumen conjunto. Puede revisarse nuevamente con `fonoresumen`.
 
 > [!TIP]
-> `fonosesion` comienza un registro nuevo y elimina los resultados actuales. Ejecuta `fonojson` y copia su salida antes de iniciar otra sesión si deseas conservar los datos.
+> Para comprobar sólo el cambio de mapa y el HUD sin realizar todas las actividades, usa `fonojuegotest 30`. Este comando de desarrollo inicia 30 segundos de juego libre.
 
 ### Recuperación rápida durante una demostración
 
@@ -249,7 +255,7 @@ Si quedan objetos activos o se necesita repetir la prueba:
 ```text
 fonosalalimpia
 fonoreset
-fonoma2
+fonoaventura Demo_001 5a0m
 ```
 
 ### Prueba de control de actividades
@@ -276,6 +282,12 @@ Para comprobar rápidamente todos los modos de pares, estas son las respuestas o
 | `fonosala` | Explica el flujo de las salas educativas |
 | `fonosalademo` | Recorre la demostración guiada de salas |
 | `fonosalalimpia` | Elimina objetos educativos activos y reinicia la sala de prueba |
+| `fonoaventura <código> <edad>` | Inicia el recorrido completo recomendado |
+| `fonoaventuraayuda` | Explica el flujo de aventura y juego libre |
+| `fonotiempo <minutos>` | Configura el premio entre 1 y 10 minutos |
+| `fonofinjuego` | Permite que la persona adulta termine el juego libre antes |
+| `fonoresumen` | Muestra el resumen conjunto de la aventura |
+| `fonojuegotest <segundos>` | Prueba técnica rápida del cambio de mapa y temporizador |
 
 ### Actividades recomendadas
 
@@ -422,7 +434,13 @@ Observación y registro oral manual (1–5)
               ↓
 Reporte descriptivo + detalle por par
               ↓
-Salida estructurada con fonojson
+Segunda actividad y conservación de ambos resultados
+              ↓
+Juego libre temporizado en Greenflower Zone Act 1
+              ↓
+Resumen conjunto de la aventura
+              ↓
+Salida estructurada individual con fonojson
               ↓
 Reporte externo con Tools/generar_reporte.py
               ↓
@@ -447,13 +465,18 @@ La rama `main` contiene la versión estable utilizada para la demostración. Los
 - inclusión de `Maps/*.wad` dentro del PK3;
 - cierre de SRB2 por un mapa sin nodos válidos;
 - ejecución de Zone Builder en Linux Mint mediante Wine.
+- conflicto entre el mapa educativo y Greenflower por compartir `MAP01`;
+- conservación de resultados al encadenar dos actividades;
+- transición automática al juego libre y regreso seguro a `MAPA0`;
+- temporizador HUD con aviso de 30 segundos y cierre anticipado por un adulto.
 
 ## Próximos pasos
 
-- decorar `MAP01` y diferenciar visualmente cada sala;
+- decorar `MAPA0` y diferenciar visualmente cada sala;
 - agregar señalética e instrucciones dentro del escenario;
-- vincular las salas con actividades sin depender tanto de la consola;
+- iniciar la aventura desde un objeto o zona del mapa, sin depender de la consola;
 - posicionar las actividades de acuerdo con cada zona del mapa;
+- validar con la profesora la duración y el diseño del periodo de juego libre;
 - agregar sonidos o instrucciones grabadas;
 - ampliar el banco de sílabas, palabras y categorías;
 - mejorar la exportación automática de sesiones;
