@@ -11,9 +11,11 @@ local fonoEsActividadPares
 local fonoPares
 local fonoFlujoSesion
 local fonoReiniciarFlujo
+local fonoCentroActividad
+local fonoLimpiarCheckpointsVisuales
 
 print("====================================")
-print("Sonic FonoKids v0.0.6 cargado")
+print("Sonic FonoKids v0.0.7 cargado")
 print("====================================")
 
 local nombreProyecto = "Sonic FonoKids"
@@ -1819,30 +1821,41 @@ local function crearObjetoFonoPar(player, palabra, lado)
         return nil
     end
 
-    -- La disposicion se calcula con la vista para que las tarjetas
-    -- siempre aparezcan una al lado de la otra en pantalla.
+    -- En la aventura, las tarjetas quedan ancladas al centro de la zona.
+    -- Fuera de ella conservamos el comportamiento original frente al jugador.
     local distanciaFrente = 120 * FRACUNIT
     local separacionLateral = 72 * FRACUNIT
     local altura = 36 * FRACUNIT
 
     local anguloFrente = player.mo.angle
+    local origenX = player.mo.x
+    local origenY = player.mo.y
+    local origenZ = player.mo.z
 
-    if camera ~= nil and camera.angle ~= nil then
+    if fonoCentroActividad ~= nil
+    and fonoFlujoSesion ~= nil
+    and fonoFlujoSesion.activo == true
+    and gamemap == fonoFlujoSesion.mapaEducativo then
+        origenX = fonoCentroActividad.x
+        origenY = fonoCentroActividad.y
+        origenZ = fonoCentroActividad.z
+        anguloFrente = fonoCentroActividad.angle
+    elseif camera ~= nil and camera.angle ~= nil then
         anguloFrente = camera.angle
     end
 
     local anguloLado = anguloFrente + ANGLE_90
 
-    local xBase = player.mo.x
+    local xBase = origenX
         + FixedMul(cos(anguloFrente), distanciaFrente)
-    local yBase = player.mo.y
+    local yBase = origenY
         + FixedMul(sin(anguloFrente), distanciaFrente)
 
     local x = xBase
         + FixedMul(cos(anguloLado), separacionLateral * lado)
     local y = yBase
         + FixedMul(sin(anguloLado), separacionLateral * lado)
-    local z = player.mo.z + altura
+    local z = origenZ + altura
 
     local objeto = P_SpawnMobj(x, y, z, MT_FONO_OBJETO)
 
@@ -3330,7 +3343,7 @@ end
 -- ==========================================
 -- AVENTURA EDUCATIVA Y PREMIO DE JUEGO LIBRE
 -- ==========================================
--- Flujo v0.0.6:
+-- Flujo v0.0.7:
 --   MAPA0 -> seis actividades por secciones y checkpoints -> meta
 --   -> MAP01 por tiempo limitado -> MAPA0.
 -- El progreso depende de completar cada actividad, no de acertarlas todas.
@@ -3361,11 +3374,82 @@ local fonoMapaAventura = {
     sectorInicio = 100,
     sectorMeta = 160,
     checkpointsTotal = 5,
-    inicioX = -6784 * FRACUNIT,
+    inicioX = -7072 * FRACUNIT,
     inicioY = 0,
     inicioZ = 0,
     limiteMetaX = 4768 * FRACUNIT
 }
+
+local fonoCheckpointsMapa = {
+    {
+        x = -6272 * FRACUNIT,
+        y = 0,
+        z = 0,
+        siguienteX = -5248 * FRACUNIT,
+        siguienteY = 0
+    },
+    {
+        x = -4224 * FRACUNIT,
+        y = 192 * FRACUNIT,
+        z = 0,
+        siguienteX = -2944 * FRACUNIT,
+        siguienteY = 512 * FRACUNIT
+    },
+    {
+        x = -1920 * FRACUNIT,
+        y = 256 * FRACUNIT,
+        z = 0,
+        siguienteX = -640 * FRACUNIT,
+        siguienteY = -512 * FRACUNIT
+    },
+    {
+        x = 384 * FRACUNIT,
+        y = -384 * FRACUNIT,
+        z = 0,
+        siguienteX = 1920 * FRACUNIT,
+        siguienteY = -704 * FRACUNIT
+    },
+    {
+        x = 3264 * FRACUNIT,
+        y = 0,
+        z = 0,
+        siguienteX = 4224 * FRACUNIT,
+        siguienteY = 0
+    }
+}
+
+local fonoCheckpointsVisuales = {}
+local fonoIndiceCheckpointVisual = {}
+
+fonoLimpiarCheckpointsVisuales = function()
+    for i = 1, #fonoCheckpointsVisuales do
+        local checkpoint = fonoCheckpointsVisuales[i]
+
+        if checkpoint ~= nil and checkpoint.valid then
+            P_RemoveMobj(checkpoint)
+        end
+    end
+
+    fonoCheckpointsVisuales = {}
+    fonoIndiceCheckpointVisual = {}
+end
+
+local function fonoCrearCheckpointsVisuales()
+    fonoLimpiarCheckpointsVisuales()
+
+    for i = 1, #fonoCheckpointsMapa do
+        local datos = fonoCheckpointsMapa[i]
+        local checkpoint = P_SpawnMobj(datos.x, datos.y, datos.z, MT_STARPOST)
+
+        if checkpoint ~= nil then
+            checkpoint.health = i
+            checkpoint.angle = R_PointToAngle2(datos.x, datos.y,
+                datos.siguienteX, datos.siguienteY)
+            fonoIndiceCheckpointVisual[checkpoint] = i
+            table.insert(fonoCheckpointsVisuales, checkpoint)
+        end
+    end
+end
 
 local function fonoCopiarLista(lista)
     local copia = {}
@@ -3467,6 +3551,11 @@ fonoReiniciarFlujo = function()
     fonoFlujoSesion.sectorAnterior = nil
     fonoFlujoSesion.posicionSegura = nil
     fonoFlujoSesion.ticsAvisoBloqueo = 0
+    fonoCentroActividad = nil
+
+    if fonoLimpiarCheckpointsVisuales ~= nil then
+        fonoLimpiarCheckpointsVisuales()
+    end
 end
 
 local fonoActividadesAventura = {
@@ -3475,6 +3564,10 @@ local fonoActividadesAventura = {
         nombreCorto = "SILABA MA",
         sector = 100,
         checkpoint = 101,
+        centros = {
+            { x = -6784 * FRACUNIT, y = 0, z = 0, angle = 0,
+                radio = 144 * FRACUNIT }
+        },
         iniciar = function(player)
             fonoIniciarParesSilaba(player, "MA", {
                 {
@@ -3493,6 +3586,10 @@ local fonoActividadesAventura = {
         nombreCorto = "SILABA PA",
         sector = 110,
         checkpoint = 111,
+        centros = {
+            { x = -5248 * FRACUNIT, y = 0, z = 0, angle = 0,
+                radio = 144 * FRACUNIT }
+        },
         iniciar = function(player)
             fonoIniciarParesSilaba(player, "PA", {
                 {
@@ -3515,6 +3612,10 @@ local fonoActividadesAventura = {
         nombreCorto = "SILABA BA",
         sector = 120,
         checkpoint = 121,
+        centros = {
+            { x = -2944 * FRACUNIT, y = 512 * FRACUNIT, z = 0, angle = 0,
+                radio = 144 * FRACUNIT }
+        },
         iniciar = function(player)
             fonoIniciarParesSilaba(player, "BA", {
                 {
@@ -3537,6 +3638,10 @@ local fonoActividadesAventura = {
         nombreCorto = "ANIMALES",
         sector = 130,
         checkpoint = 131,
+        centros = {
+            { x = -640 * FRACUNIT, y = -512 * FRACUNIT, z = 0, angle = 0,
+                radio = 144 * FRACUNIT }
+        },
         iniciar = function(player)
             fonoIniciarParesCategoria(player, "animal", {
                 {
@@ -3559,6 +3664,12 @@ local fonoActividadesAventura = {
         nombreCorto = "COMIDAS",
         sector = 140,
         checkpoint = 150,
+        centros = {
+            { x = 1920 * FRACUNIT, y = 704 * FRACUNIT, z = 0, angle = 0,
+                radio = 144 * FRACUNIT },
+            { x = 1920 * FRACUNIT, y = -704 * FRACUNIT, z = 0, angle = 0,
+                radio = 144 * FRACUNIT }
+        },
         iniciar = function(player)
             fonoIniciarParesCategoria(player, "comida", {
                 {
@@ -3581,6 +3692,10 @@ local fonoActividadesAventura = {
         nombreCorto = "TRANSPORTES",
         sector = 160,
         checkpoint = nil,
+        centros = {
+            { x = 4224 * FRACUNIT, y = 0, z = 0, angle = 0,
+                radio = 144 * FRACUNIT }
+        },
         iniciar = function(player)
             fonoIniciarParesCategoria(player, "transporte", {
                 {
@@ -3671,6 +3786,34 @@ local function fonoPrepararMeta(player)
     end
 end
 
+local function fonoPrepararEtapaAventura(player, indice)
+    local actividad = fonoActividadesAventura[indice]
+
+    if actividad == nil then
+        return false
+    end
+
+    fonoCentroActividad = nil
+    fonoFlujoSesion.indiceActividad = indice
+    fonoFlujoSesion.actividadCapturada = false
+    fonoFlujoSesion.fase = "buscando_centro"
+    fonoFlujoSesion.playerTransicion = player
+    fonoFlujoSesion.sectorAnterior = fonoObtenerSectorJugador(player)
+    fonoGuardarPosicionSegura(player)
+
+    CONS_Printf(player, "Etapa " .. tostring(indice)
+        .. " de " .. tostring(#fonoActividadesAventura)
+        .. ": llega al centro para iniciar " .. tostring(actividad.nombre) .. ".")
+
+    if fonoSetHud ~= nil then
+        fonoSetHud(player, "ETAPA " .. tostring(indice)
+            .. "/" .. tostring(#fonoActividadesAventura),
+            "VE AL CENTRO DE LA ZONA", TICRATE * 6)
+    end
+
+    return true
+end
+
 local function fonoIniciarActividadAventura(player, indice)
     local actividad = fonoActividadesAventura[indice]
 
@@ -3691,6 +3834,32 @@ local function fonoIniciarActividadAventura(player, indice)
 
     actividad.iniciar(player)
     return true
+end
+
+local function fonoActivarCentroCercano(player, actividad)
+    if actividad == nil or actividad.centros == nil then
+        return false
+    end
+
+    for i = 1, #actividad.centros do
+        local centro = actividad.centros[i]
+        local distancia = R_PointToDist2(player.mo.x, player.mo.y,
+            centro.x, centro.y)
+
+        if distancia <= centro.radio then
+            fonoCentroActividad = {
+                x = centro.x,
+                y = centro.y,
+                z = centro.z,
+                angle = centro.angle
+            }
+
+            return fonoIniciarActividadAventura(player,
+                fonoFlujoSesion.indiceActividad)
+        end
+    end
+
+    return false
 end
 
 local function fonoIrAlJuegoLibre(player)
@@ -3837,6 +4006,37 @@ addHook("PlayerSpawn", function(player)
     end
 end)
 
+addHook("TouchSpecial", function(special, toucher)
+    local indice = fonoIndiceCheckpointVisual[special]
+
+    if indice == nil
+    or fonoFlujoSesion.activo ~= true
+    or gamemap ~= fonoFlujoSesion.mapaEducativo then
+        return
+    end
+
+    local habilitado = fonoFlujoSesion.checkpointActual >= indice
+        or (fonoFlujoSesion.fase == "checkpoint_listo"
+        and fonoFlujoSesion.indiceActividad == indice)
+
+    if habilitado then
+        return
+    end
+
+    local player = nil
+
+    if toucher ~= nil then
+        player = toucher.player
+    end
+
+    if player ~= nil then
+        fonoAvisarPasoBloqueado(player, "CHECKPOINT BLOQUEADO",
+            "Checkpoint bloqueado: activa y completa la actividad actual.")
+    end
+
+    return true
+end, MT_STARPOST)
+
 addHook("PlayerThink", function(player)
     if player == nil or player.mo == nil or player.mo.valid == false then
         return
@@ -3859,6 +4059,12 @@ addHook("PlayerThink", function(player)
             fonoGuardarPosicionSegura(player)
         end
 
+        if fonoFlujoSesion.fase == "buscando_centro"
+        and actividad ~= nil
+        and sectorActual == actividad.sector then
+            fonoActivarCentroCercano(player, actividad)
+        end
+
         if actividad ~= nil
         and indice == #fonoActividadesAventura
         and sectorActual == fonoMapaAventura.sectorMeta
@@ -3872,7 +4078,8 @@ addHook("PlayerThink", function(player)
             return
         end
 
-        if fonoFlujoSesion.fase == "educativa"
+        if (fonoFlujoSesion.fase == "buscando_centro"
+        or fonoFlujoSesion.fase == "educativa")
         and actividad ~= nil
         and actividad.checkpoint ~= nil
         and sectorActual == actividad.checkpoint then
@@ -3903,7 +4110,7 @@ addHook("PlayerThink", function(player)
             local siguiente = fonoActividadesAventura[indice + 1]
 
             if siguiente ~= nil and sectorActual == siguiente.sector then
-                fonoIniciarActividadAventura(player, indice + 1)
+                fonoPrepararEtapaAventura(player, indice + 1)
             end
         elseif fonoFlujoSesion.fase == "meta_lista"
         and sectorActual == fonoMapaAventura.sectorMeta
@@ -3945,7 +4152,9 @@ addHook("HUD", function(v, player)
     local flags = V_SNAPTOTOP|V_SNAPTOLEFT
     local estado = "COMPLETA LA ACTIVIDAD"
 
-    if fonoFlujoSesion.fase == "checkpoint_listo" then
+    if fonoFlujoSesion.fase == "buscando_centro" then
+        estado = "VE AL CENTRO DE LA ZONA"
+    elseif fonoFlujoSesion.fase == "checkpoint_listo" then
         estado = "BUSCA EL CHECKPOINT"
     elseif fonoFlujoSesion.fase == "buscando_seccion" then
         estado = "AVANZA A LA SIGUIENTE ZONA"
@@ -4013,10 +4222,12 @@ COM_AddCommand("fonoaventura", function(player, codigo, edad)
     fonoReiniciarFlujo()
 
     fonoFlujoSesion.activo = true
-    fonoFlujoSesion.fase = "educativa"
+    fonoCrearCheckpointsVisuales()
 
     P_SetOrigin(player.mo, fonoMapaAventura.inicioX,
         fonoMapaAventura.inicioY, fonoMapaAventura.inicioZ)
+    player.starpostnum = 0
+    player.starpostbit = 0
     player.mo.angle = 0
     player.mo.momx = 0
     player.mo.momy = 0
@@ -4026,12 +4237,13 @@ COM_AddCommand("fonoaventura", function(player, codigo, edad)
     CONS_Printf(player, "Participante anonimo: " .. tostring(codigo))
     CONS_Printf(player, "Edad: " .. tostring(edad))
     CONS_Printf(player, "Completa seis actividades distribuidas por el nivel.")
+    CONS_Printf(player, "Llega al centro de cada zona para hacer aparecer sus objetos.")
     CONS_Printf(player, "Cada checkpoint se abre al terminar la etapa anterior.")
     CONS_Printf(player, "La meta se desbloquea al completar transportes.")
     CONS_Printf(player, "No es necesario acertar todo: se premia completar el recorrido.")
     CONS_Printf(player, "================================================")
 
-    fonoIniciarActividadAventura(player, 1)
+    fonoPrepararEtapaAventura(player, 1)
 end)
 
 COM_AddCommand("fonotiempo", function(player, minutos)
@@ -4106,10 +4318,10 @@ COM_AddCommand("fonoaventuraayuda", function(player)
     CONS_Printf(player, "========== AVENTURA FONOKIDS ==========")
     CONS_Printf(player, "1) map MAPA0")
     CONS_Printf(player, "2) fonoaventura Demo_001 5a0m")
-    CONS_Printf(player, "3) Toca una opcion y registra 1-5 en cada par.")
-    CONS_Printf(player, "4) Cruza el checkpoint para abrir la siguiente etapa.")
-    CONS_Printf(player, "5) Completa MA, PA, BA, animales, comidas y transportes.")
-    CONS_Printf(player, "6) Llega a la meta para iniciar el juego libre.")
+    CONS_Printf(player, "3) Llega al centro de la zona para activar los objetos.")
+    CONS_Printf(player, "4) Toca una opcion y registra 1-5 en cada par.")
+    CONS_Printf(player, "5) Cruza el poste checkpoint para abrir la siguiente etapa.")
+    CONS_Printf(player, "6) Completa las seis etapas y llega a la meta.")
     CONS_Printf(player, "fonoetapa     -> muestra etapa y checkpoints")
     CONS_Printf(player, "fonotiempo 5  -> configura cinco minutos")
     CONS_Printf(player, "fonofinjuego  -> permite al adulto terminar antes")

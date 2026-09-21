@@ -21,8 +21,10 @@ para usar Greenflower Zone Act 1 como premio de juego temporizado.
 - Sin precipicios.
 - Espacios amplios.
 - Caminos claros.
-- Objetos educativos deben aparecer frente a Sonic.
-- Cada pasillo debe actuar como checkpoint entre dos etapas.
+- Los objetos educativos deben aparecer solo cuando Sonic llegue al centro de la zona.
+- Los pictogramas deben quedar anclados al centro activado, no seguir al jugador.
+- Cada pasillo debe incluir un Star Post visible y actuar como checkpoint entre dos etapas.
+- Cada Star Post habilitado debe guardar el punto de reaparicion de Sonic.
 - Un checkpoint bloqueado debe devolver a Sonic a una posicion segura.
 - La meta solo debe habilitarse despues de completar las seis actividades.
 - El mapa debe servir para ninos pequenos, no para desafio de plataformas.
@@ -35,3 +37,18 @@ para usar Greenflower Zone Act 1 como premio de juego temporizado.
 - fonoaventura Demo_001 5a0m
 - fonoetapa
 - fonojuegotest 30
+
+## Centros de activacion y checkpoints
+
+| Etapa | Sector | Centro de activacion | Checkpoint |
+|---|---:|---:|---:|
+| MA | 100 | `(-6784, 0)` | `(-6272, 0)` |
+| PA | 110 | `(-5248, 0)` | `(-4224, 192)` |
+| BA | 120 | `(-2944, 512)` | `(-1920, 256)` |
+| Animales | 130 | `(-640, -512)` | `(384, -384)` |
+| Comidas | 140 | `(1920, 704)` o `(1920, -704)` | `(3264, 0)` |
+| Transportes | 160 | `(4224, 0)` | Meta educativa |
+
+Cada centro utiliza un radio de activacion de 144 unidades. La zona de comidas
+acepta dos centros porque la sala puede recorrerse por su franja superior o
+inferior; los pictogramas aparecen en la franja que Sonic alcance primero.
