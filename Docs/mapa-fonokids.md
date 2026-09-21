@@ -8,10 +8,13 @@ marcador interno a `MAPA0` al construir el PK3. De este modo, `MAP01` queda libr
 para usar Greenflower Zone Act 1 como premio de juego temporizado.
 
 ## Estructura inicial
-1. Sala de inicio
-2. Sala de silabas iniciales
-3. Sala de vocabulario por categorias
-4. Sala final de reporte
+1. Inicio: silaba `MA`
+2. Checkpoint 1 y zona de silaba `PA`
+3. Checkpoint 2 y zona de silaba `BA`
+4. Checkpoint 3 y zona de animales
+5. Checkpoint 4 y zona de comidas
+6. Checkpoint 5 y zona de transportes
+7. Meta educativa y acceso al premio `MAP01`
 
 ## Reglas de diseno
 - Sin enemigos.
@@ -19,6 +22,9 @@ para usar Greenflower Zone Act 1 como premio de juego temporizado.
 - Espacios amplios.
 - Caminos claros.
 - Objetos educativos deben aparecer frente a Sonic.
+- Cada pasillo debe actuar como checkpoint entre dos etapas.
+- Un checkpoint bloqueado debe devolver a Sonic a una posicion segura.
+- La meta solo debe habilitarse despues de completar las seis actividades.
 - El mapa debe servir para ninos pequenos, no para desafio de plataformas.
 
 ## Comandos a probar
@@ -27,4 +33,5 @@ para usar Greenflower Zone Act 1 como premio de juego temporizado.
 - fonospritecheck
 - fonoreporte
 - fonoaventura Demo_001 5a0m
+- fonoetapa
 - fonojuegotest 30
