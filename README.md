@@ -9,8 +9,8 @@ El proyecto combina programación y Fonoaudiología para construir una experienc
 
 ## Estado actual
 
-Versión del mod: **v0.0.5 experimental**<br>
-Última actualización del README: **20 de septiembre de 2026**
+Versión del mod: **v0.0.11 experimental**<br>
+Última actualización del README: **22 de septiembre de 2026**
 
 | Área | Estado | Avance disponible |
 |---|---:|---|
@@ -19,21 +19,22 @@ Versión del mod: **v0.0.5 experimental**<br>
 | Elección entre pares | ✅ Funcional | Dos pictogramas simultáneos con alternancia de lado correcto |
 | Vocabulario | ✅ Funcional | Categorías animales, comidas y transportes |
 | HUD y feedback | ✅ Funcional | Objetivo, alternativas, progreso y guía de evaluación oral `1–5` |
-| Pictogramas | ✅ Integrados | 18 palabras con sprites propios |
+| Pictogramas | ✅ Integrados | 18 palabras con sprites propios que aparecen automáticamente al entrar a cada etapa |
 | Reportes | ✅ Funcional | Reporte en consola, detalle por par y salida tipo JSON |
 | Evaluación descriptiva oral | ✅ Flujo guiado | Pausa tras cada elección y registro manual con teclado o comandos `1–5` |
 | Herramienta externa | ✅ Funcional | Generador de reporte `.txt` en Python |
-| Mapa propio | 🧪 Bosquejo jugable | Empaquetado como `MAPA0`, con cuatro salas y tres pasillos, sin enemigos ni precipicios |
-| Aventura guiada | ✅ Funcional | Encadena conciencia fonológica y vocabulario conservando ambos resultados |
-| Juego libre | ✅ Funcional | Premio de cinco minutos en Greenflower Zone Act 1 con temporizador HUD |
+| Mapa propio | 🧪 Bosquejo jugable | Empaquetado como `MAPA0`, con seis zonas y cinco pasillos, sin enemigos ni precipicios |
+| Aventura guiada | ✅ Funcional | Encadena las seis actividades, conserva sus resultados y reinicia el circuito después del premio |
+| Progresión por checkpoints | ✅ Implementada | Cinco Star Posts visibles marcan los pasillos, guardan el respawn y desbloquean la zona siguiente |
+| Juego libre | ✅ Funcional | Premio de cinco minutos que continúa entre los actos de Greenflower Zone con temporizador HUD |
 | Demostración académica | ✅ Preparada | Recorrido completo: actividades, observación oral, juego libre y resumen final |
 | Integración automática al mapa | 🧪 Parcial | `fonoaventura` automatiza el recorrido; el inicio todavía se realiza desde consola |
 
-## Qué demuestra la versión v0.0.5
+## Qué demuestra la versión v0.0.11
 
-El modo recomendado inicia una aventura breve con dos actividades: sílaba inicial `MA` y vocabulario de animales. En cada ejercicio se presentan dos pictogramas, se registra cuál fue tocado y el juego se detiene para que una persona adulta clasifique la producción oral con las teclas `1` a `5`.
+El modo recomendado inicia una aventura de seis etapas: sílabas iniciales `MA`, `PA` y `BA`, animales, comidas y transportes. Los objetos educativos aparecen automáticamente al iniciar cada etapa, anclados en una posición fija y centrada de su sala. En cada ejercicio se presentan dos pictogramas, se registra cuál fue tocado y el juego se detiene para que una persona adulta clasifique la producción oral con las teclas `1` a `5`.
 
-Al completar ambas actividades —sin exigir respuestas perfectas— se desbloquea un periodo configurable de juego libre en Greenflower Zone Act 1. Un temporizador aparece en la esquina superior izquierda, avisa cuando quedan 30 segundos y devuelve al participante al mapa educativo al terminar. El resumen conserva los resultados de las dos actividades.
+Al completar una actividad —sin exigir respuestas perfectas— se habilita el Star Post que conduce a la siguiente sección. Los intentos de cruzarlo antes de tiempo devuelven a Sonic a una posición segura. Al tocarlo, funciona además como punto de reaparición al estilo de los actos de Sonic. Un muro sólido adicional bloquea físicamente la línea de meta y desaparece únicamente después de completar transportes. Alcanzar la meta inicia un periodo configurable de juego libre en Greenflower Zone. Si Sonic termina Act 1 antes de que venza el reloj, avanza normalmente a Act 2 y conserva el tiempo restante. Al agotarse el temporizador, vuelve a `MAPA0`, muestra el resumen anterior y comienza automáticamente un nuevo circuito desde la actividad `MA`.
 
 Esto permite conservar dos datos diferentes:
 
@@ -91,15 +92,15 @@ Los objetos aparecen frente al jugador, son tocables y entregan feedback inmedia
 
 El mapa educativo incluye:
 
-- una sala de inicio;
-- una sala para sílabas iniciales;
-- una sala para vocabulario;
-- una sala final para reportes;
-- tres pasillos de conexión;
+- una zona inicial para `MA`;
+- dos zonas fonológicas para `PA` y `BA`;
+- tres zonas de vocabulario para animales, comidas y transportes;
+- cinco pasillos con Star Posts visibles que funcionan como checkpoints y puntos de reaparición;
+- una meta cerrada por un muro sólido hasta completar las seis etapas;
 - inicio de jugador y nodos BSP válidos;
 - piso plano, espacios amplios, sin enemigos y sin precipicios.
 
-El diseño está pensado como base editable. La geometría ya fue probada dentro de SRB2, pero la decoración, señalética y activación automática de actividades siguen pendientes.
+El diseño está pensado como base editable. La geometría ya fue probada dentro de SRB2 y la lógica asigna automáticamente cada actividad a su zona. La decoración y la señalética física siguen pendientes.
 
 ## Tecnologías
 
@@ -192,12 +193,16 @@ Para confirmar que el mapa quedó dentro del paquete:
 unzip -l "$HOME/.var/app/org.srb2.SRB2/.srb2/addons/SonicFonoKids.pk3" | grep -i MAPA0
 ```
 
-## Abrir el juego y cargar el mapa educativo
+## Abrir el juego en OpenGL y cargar el mapa educativo
 
 ```bash
-flatpak run org.srb2.SRB2 \
-  -file "$HOME/.var/app/org.srb2.SRB2/.srb2/addons/SonicFonoKids.pk3"
+./run-opengl.sh
 ```
+
+El lanzador solicita explícitamente el renderizador OpenGL, necesario para usar
+modelos poligonales cuando el paquete de modelos está instalado. Si OpenGL no
+inicia, ejecuta `flatpak update` y comprueba los controladores disponibles con
+`flatpak --gl-drivers`.
 
 Cuando el mod se inicia con `-file`, no se debe cargar el mismo PK3 nuevamente desde el menú **Addons**.
 
@@ -221,17 +226,19 @@ fonoaventura Demo_001 5a0m
 
 `Demo_001` es un identificador ficticio y `5a0m` representa una edad de cinco años y cero meses. No se deben utilizar nombres reales.
 
-### 2. Completar las dos actividades
+### 2. Completar las seis etapas
 
-La primera actividad trabaja la sílaba inicial `MA`; la segunda trabaja vocabulario de animales. Después de tocar una opción, el juego retira ambos pictogramas y espera el registro de la producción oral.
+Las actividades se activan automáticamente al entrar a cada zona: `MA`, `PA`, `BA`, animales, comidas y transportes. Los pictogramas ya aparecen en una posición fija y centrada dentro de la sala. Después de tocar una opción, el juego retira ambos pictogramas y espera el registro de la producción oral.
 
 Con la consola cerrada, la evaluadora presiona una tecla del `1` al `5`. También puede utilizar `fonoproduccion <1-5>` desde la consola. El siguiente par sólo aparece después de completar este paso.
 
+Al finalizar todos los pares de una etapa, el HUD indica que el checkpoint está disponible. Sonic debe avanzar y tocar el Star Post del pasillo para guardar su punto de reaparición y desbloquear la zona siguiente. Si intenta cruzarlo antes de completar la actividad, vuelve a la última posición segura.
+
 ### 3. Jugar el premio
 
-Al registrar la última producción de cada actividad aparece su reporte descriptivo. Cuando termina la segunda actividad, el juego carga automáticamente Greenflower Zone Act 1 y comienza el temporizador de cinco minutos.
+Al registrar la última producción de transportes se desbloquea la meta educativa. Cuando Sonic llega a ella, el juego carga Greenflower Zone Act 1 y comienza el temporizador de cinco minutos. Terminar el acto no interrumpe el premio: Sonic avanza a Act 2 y el reloj continúa desde el tiempo restante.
 
-El premio se obtiene por **completar el recorrido**, no por acertar todas las respuestas. El tiempo puede ajustarse antes de iniciar:
+El premio se obtiene por **completar el recorrido**, no por acertar todas las respuestas. Solo al agotarse el tiempo se regresa automáticamente a `MAPA0`; allí se reconstruyen los checkpoints, el muro de la meta y las actividades para comenzar otra vez desde la etapa 1. El tiempo puede ajustarse antes de iniciar:
 
 ```text
 fonotiempo 3
@@ -243,7 +250,7 @@ La persona adulta puede terminar antes con:
 fonofinjuego
 ```
 
-Al agotarse el tiempo o llegar a la meta, Sonic vuelve a `MAPA0` y se muestra el resumen conjunto. Puede revisarse nuevamente con `fonoresumen`.
+Al agotarse el tiempo, Sonic vuelve a `MAPA0`, se muestra el resumen del recorrido anterior y comienza automáticamente una nueva ronda educativa. El reinicio se confirma tanto al aparecer Sonic como durante el primer frame válido del mapa, evitando que el orden de eventos de SRB2 deje el circuito inactivo. El comando `fonofinjuego` permite volver antes y cerrar la sesión sin iniciar otra ronda.
 
 > [!TIP]
 > Para comprobar sólo el cambio de mapa y el HUD sin realizar todas las actividades, usa `fonojuegotest 30`. Este comando de desarrollo inicia 30 segundos de juego libre.
@@ -284,6 +291,7 @@ Para comprobar rápidamente todos los modos de pares, estas son las respuestas o
 | `fonosalalimpia` | Elimina objetos educativos activos y reinicia la sala de prueba |
 | `fonoaventura <código> <edad>` | Inicia el recorrido completo recomendado |
 | `fonoaventuraayuda` | Explica el flujo de aventura y juego libre |
+| `fonoetapa` | Muestra la etapa, actividad y checkpoints superados |
 | `fonotiempo <minutos>` | Configura el premio entre 1 y 10 minutos |
 | `fonofinjuego` | Permite que la persona adulta termine el juego libre antes |
 | `fonoresumen` | Muestra el resumen conjunto de la aventura |
@@ -436,9 +444,9 @@ Reporte descriptivo + detalle por par
               ↓
 Segunda actividad y conservación de ambos resultados
               ↓
-Juego libre temporizado en Greenflower Zone Act 1
+Juego libre temporizado a través de los actos de Greenflower Zone
               ↓
-Resumen conjunto de la aventura
+Resumen conjunto de la aventura y reinicio de las actividades
               ↓
 Salida estructurada individual con fonojson
               ↓
@@ -466,16 +474,19 @@ La rama `main` contiene la versión estable utilizada para la demostración. Los
 - cierre de SRB2 por un mapa sin nodos válidos;
 - ejecución de Zone Builder en Linux Mint mediante Wine.
 - conflicto entre el mapa educativo y Greenflower por compartir `MAP01`;
-- conservación de resultados al encadenar dos actividades;
+- conservación de resultados al encadenar las seis actividades;
+- asignación automática de una actividad a cada sección del mapa;
+- checkpoints bloqueados hasta completar la etapa correspondiente;
+- meta educativa bloqueada hasta finalizar transportes;
 - transición automática al juego libre y regreso seguro a `MAPA0`;
 - temporizador HUD con aviso de 30 segundos y cierre anticipado por un adulto.
 
 ## Próximos pasos
 
 - decorar `MAPA0` y diferenciar visualmente cada sala;
-- agregar señalética e instrucciones dentro del escenario;
+- agregar señalética física para cada checkpoint dentro del escenario;
 - iniciar la aventura desde un objeto o zona del mapa, sin depender de la consola;
-- posicionar las actividades de acuerdo con cada zona del mapa;
+- validar en SRB2 las posiciones y límites de las seis zonas;
 - validar con la profesora la duración y el diseño del periodo de juego libre;
 - agregar sonidos o instrucciones grabadas;
 - ampliar el banco de sílabas, palabras y categorías;

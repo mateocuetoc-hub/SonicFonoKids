@@ -8,17 +8,25 @@ marcador interno a `MAPA0` al construir el PK3. De este modo, `MAP01` queda libr
 para usar Greenflower Zone Act 1 como premio de juego temporizado.
 
 ## Estructura inicial
-1. Sala de inicio
-2. Sala de silabas iniciales
-3. Sala de vocabulario por categorias
-4. Sala final de reporte
+1. Inicio: silaba `MA`
+2. Checkpoint 1 y zona de silaba `PA`
+3. Checkpoint 2 y zona de silaba `BA`
+4. Checkpoint 3 y zona de animales
+5. Checkpoint 4 y zona de comidas
+6. Checkpoint 5 y zona de transportes
+7. Meta educativa y acceso al premio `MAP01`
 
 ## Reglas de diseno
 - Sin enemigos.
 - Sin precipicios.
 - Espacios amplios.
 - Caminos claros.
-- Objetos educativos deben aparecer frente a Sonic.
+- Los objetos educativos deben aparecer automaticamente al iniciar cada etapa.
+- Los pictogramas deben quedar anclados al centro fijo de su sala, no seguir al jugador.
+- Cada pasillo debe incluir un Star Post visible y actuar como checkpoint entre dos etapas.
+- Cada Star Post habilitado debe guardar el punto de reaparicion de Sonic.
+- Un checkpoint bloqueado debe devolver a Sonic a una posicion segura.
+- Un muro solido debe bloquear la meta hasta completar las seis actividades.
 - El mapa debe servir para ninos pequenos, no para desafio de plataformas.
 
 ## Comandos a probar
@@ -27,4 +35,21 @@ para usar Greenflower Zone Act 1 como premio de juego temporizado.
 - fonospritecheck
 - fonoreporte
 - fonoaventura Demo_001 5a0m
+- fonoetapa
 - fonojuegotest 30
+
+## Centros de activacion y checkpoints
+
+| Etapa | Sector | Centro de activacion | Checkpoint |
+|---|---:|---:|---:|
+| MA | 100 | `(-6784, 0)` | `(-6272, 0)` |
+| PA | 110 | `(-5248, 0)` | `(-4224, 192)` |
+| BA | 120 | `(-2944, 512)` | `(-1920, 256)` |
+| Animales | 130 | `(-640, -512)` | `(384, -384)` |
+| Comidas | 140 | `(1920, 0)` | `(3264, 0)` |
+| Transportes | 160 | `(4224, 0)` | Meta educativa |
+
+Cada centro indica la posicion fija de los pictogramas. No existe radio de
+activacion: los objetos aparecen en cuanto comienza la etapa correspondiente.
+La meta queda cerrada por bloques solidos invisibles en `x = 4704`; estos se
+eliminan solamente cuando finaliza la actividad de transportes.
