@@ -9,7 +9,7 @@ El proyecto combina programación y Fonoaudiología para construir una experienc
 
 ## Estado actual
 
-Versión del mod: **v0.0.10 experimental**<br>
+Versión del mod: **v0.0.11 experimental**<br>
 Última actualización del README: **22 de septiembre de 2026**
 
 | Área | Estado | Avance disponible |
@@ -30,7 +30,7 @@ Versión del mod: **v0.0.10 experimental**<br>
 | Demostración académica | ✅ Preparada | Recorrido completo: actividades, observación oral, juego libre y resumen final |
 | Integración automática al mapa | 🧪 Parcial | `fonoaventura` automatiza el recorrido; el inicio todavía se realiza desde consola |
 
-## Qué demuestra la versión v0.0.10
+## Qué demuestra la versión v0.0.11
 
 El modo recomendado inicia una aventura de seis etapas: sílabas iniciales `MA`, `PA` y `BA`, animales, comidas y transportes. Los objetos educativos aparecen automáticamente al iniciar cada etapa, anclados en una posición fija y centrada de su sala. En cada ejercicio se presentan dos pictogramas, se registra cuál fue tocado y el juego se detiene para que una persona adulta clasifique la producción oral con las teclas `1` a `5`.
 
@@ -250,7 +250,7 @@ La persona adulta puede terminar antes con:
 fonofinjuego
 ```
 
-Al agotarse el tiempo, Sonic vuelve a `MAPA0`, se muestra el resumen del recorrido anterior y comienza automáticamente una nueva ronda educativa. El comando `fonofinjuego` permite volver antes y cerrar la sesión sin iniciar otra ronda.
+Al agotarse el tiempo, Sonic vuelve a `MAPA0`, se muestra el resumen del recorrido anterior y comienza automáticamente una nueva ronda educativa. El reinicio se confirma tanto al aparecer Sonic como durante el primer frame válido del mapa, evitando que el orden de eventos de SRB2 deje el circuito inactivo. El comando `fonofinjuego` permite volver antes y cerrar la sesión sin iniciar otra ronda.
 
 > [!TIP]
 > Para comprobar sólo el cambio de mapa y el HUD sin realizar todas las actividades, usa `fonojuegotest 30`. Este comando de desarrollo inicia 30 segundos de juego libre.

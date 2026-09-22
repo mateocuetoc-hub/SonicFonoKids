@@ -16,7 +16,7 @@ local fonoLimpiarCheckpointsVisuales
 local fonoLimpiarMuroMeta
 
 print("====================================")
-print("Sonic FonoKids v0.0.10 cargado")
+print("Sonic FonoKids v0.0.11 cargado")
 print("====================================")
 
 local nombreProyecto = "Sonic FonoKids"
@@ -3353,7 +3353,7 @@ end
 -- ==========================================
 -- AVENTURA EDUCATIVA Y PREMIO DE JUEGO LIBRE
 -- ==========================================
--- Flujo v0.0.10:
+-- Flujo v0.0.11:
 --   MAPA0 -> seis actividades por secciones y checkpoints -> meta
 --   -> Greenflower por tiempo limitado -> MAPA0 -> nuevo ciclo educativo.
 -- El progreso depende de completar cada actividad, no de acertarlas todas.
@@ -3894,6 +3894,24 @@ local function fonoIniciarCicloEducativo(player, esReinicioAutomatico)
     return fonoIniciarActividadAventura(player, 1)
 end
 
+local function fonoCompletarReinicioEducativo(player)
+    if fonoFlujoSesion.fase ~= "reiniciando_educativa"
+    or fonoFlujoSesion.reporteFinalPendiente ~= true
+    or player == nil
+    or player.mo == nil
+    or player.mo.valid == false then
+        return false
+    end
+
+    -- Cerramos el pendiente antes de iniciar para impedir que PlayerSpawn y
+    -- ThinkFrame ejecuten el mismo reinicio durante el cambio de mapa.
+    fonoFlujoSesion.reporteFinalPendiente = false
+
+    CONS_Printf(player, "Recorrido anterior completado.")
+    fonoMostrarResumenAventura(player)
+    return fonoIniciarCicloEducativo(player, true)
+end
+
 local function fonoIrAlJuegoLibre(player)
     if fonoFlujoSesion.fase == "cambiando_juego"
     or fonoFlujoSesion.fase == "juego" then
@@ -3964,6 +3982,20 @@ revisarCierreActividad = function(player)
 end
 
 addHook("ThinkFrame", function()
+    if fonoFlujoSesion.fase == "reiniciando_educativa" then
+        -- Dependiendo del cambio de mapa, SRB2 puede ejecutar PlayerSpawn
+        -- antes que MapLoad. El primer frame con un jugador valido garantiza
+        -- que el nuevo ciclo educativo comience en ambos ordenes de eventos.
+        for player in players.iterate do
+            if player.mo ~= nil and player.mo.valid then
+                fonoCompletarReinicioEducativo(player)
+                break
+            end
+        end
+
+        return
+    end
+
     if fonoFlujoSesion.fase ~= "juego" then
         return
     end
@@ -4033,11 +4065,7 @@ addHook("PlayerSpawn", function(player)
 
     if fonoFlujoSesion.fase == "reiniciando_educativa"
     and fonoFlujoSesion.reporteFinalPendiente == true then
-        fonoFlujoSesion.reporteFinalPendiente = false
-
-        CONS_Printf(player, "Recorrido anterior completado.")
-        fonoMostrarResumenAventura(player)
-        fonoIniciarCicloEducativo(player, true)
+        fonoCompletarReinicioEducativo(player)
         return
     end
 
