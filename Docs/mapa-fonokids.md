@@ -21,12 +21,12 @@ para usar Greenflower Zone Act 1 como premio de juego temporizado.
 - Sin precipicios.
 - Espacios amplios.
 - Caminos claros.
-- Los objetos educativos deben aparecer solo cuando Sonic llegue al centro de la zona.
-- Los pictogramas deben quedar anclados al centro activado, no seguir al jugador.
+- Los objetos educativos deben aparecer automaticamente al iniciar cada etapa.
+- Los pictogramas deben quedar anclados al centro fijo de su sala, no seguir al jugador.
 - Cada pasillo debe incluir un Star Post visible y actuar como checkpoint entre dos etapas.
 - Cada Star Post habilitado debe guardar el punto de reaparicion de Sonic.
 - Un checkpoint bloqueado debe devolver a Sonic a una posicion segura.
-- La meta solo debe habilitarse despues de completar las seis actividades.
+- Un muro solido debe bloquear la meta hasta completar las seis actividades.
 - El mapa debe servir para ninos pequenos, no para desafio de plataformas.
 
 ## Comandos a probar
@@ -46,9 +46,10 @@ para usar Greenflower Zone Act 1 como premio de juego temporizado.
 | PA | 110 | `(-5248, 0)` | `(-4224, 192)` |
 | BA | 120 | `(-2944, 512)` | `(-1920, 256)` |
 | Animales | 130 | `(-640, -512)` | `(384, -384)` |
-| Comidas | 140 | `(1920, 704)` o `(1920, -704)` | `(3264, 0)` |
+| Comidas | 140 | `(1920, 0)` | `(3264, 0)` |
 | Transportes | 160 | `(4224, 0)` | Meta educativa |
 
-Cada centro utiliza un radio de activacion de 144 unidades. La zona de comidas
-acepta dos centros porque la sala puede recorrerse por su franja superior o
-inferior; los pictogramas aparecen en la franja que Sonic alcance primero.
+Cada centro indica la posicion fija de los pictogramas. No existe radio de
+activacion: los objetos aparecen en cuanto comienza la etapa correspondiente.
+La meta queda cerrada por bloques solidos invisibles en `x = 4704`; estos se
+eliminan solamente cuando finaliza la actividad de transportes.

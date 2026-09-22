@@ -9,7 +9,7 @@ El proyecto combina programación y Fonoaudiología para construir una experienc
 
 ## Estado actual
 
-Versión del mod: **v0.0.7 experimental**<br>
+Versión del mod: **v0.0.8 experimental**<br>
 Última actualización del README: **21 de septiembre de 2026**
 
 | Área | Estado | Avance disponible |
@@ -19,7 +19,7 @@ Versión del mod: **v0.0.7 experimental**<br>
 | Elección entre pares | ✅ Funcional | Dos pictogramas simultáneos con alternancia de lado correcto |
 | Vocabulario | ✅ Funcional | Categorías animales, comidas y transportes |
 | HUD y feedback | ✅ Funcional | Objetivo, alternativas, progreso y guía de evaluación oral `1–5` |
-| Pictogramas | ✅ Integrados | 18 palabras con sprites propios que aparecen al llegar al centro de cada zona |
+| Pictogramas | ✅ Integrados | 18 palabras con sprites propios que aparecen automáticamente al entrar a cada etapa |
 | Reportes | ✅ Funcional | Reporte en consola, detalle por par y salida tipo JSON |
 | Evaluación descriptiva oral | ✅ Flujo guiado | Pausa tras cada elección y registro manual con teclado o comandos `1–5` |
 | Herramienta externa | ✅ Funcional | Generador de reporte `.txt` en Python |
@@ -30,11 +30,11 @@ Versión del mod: **v0.0.7 experimental**<br>
 | Demostración académica | ✅ Preparada | Recorrido completo: actividades, observación oral, juego libre y resumen final |
 | Integración automática al mapa | 🧪 Parcial | `fonoaventura` automatiza el recorrido; el inicio todavía se realiza desde consola |
 
-## Qué demuestra la versión v0.0.7
+## Qué demuestra la versión v0.0.8
 
-El modo recomendado inicia una aventura de seis etapas: sílabas iniciales `MA`, `PA` y `BA`, animales, comidas y transportes. Sonic debe llegar al centro de cada zona para hacer aparecer los objetos educativos. En cada ejercicio se presentan dos pictogramas anclados a ese punto, se registra cuál fue tocado y el juego se detiene para que una persona adulta clasifique la producción oral con las teclas `1` a `5`.
+El modo recomendado inicia una aventura de seis etapas: sílabas iniciales `MA`, `PA` y `BA`, animales, comidas y transportes. Los objetos educativos aparecen automáticamente al iniciar cada etapa, anclados en una posición fija y centrada de su sala. En cada ejercicio se presentan dos pictogramas, se registra cuál fue tocado y el juego se detiene para que una persona adulta clasifique la producción oral con las teclas `1` a `5`.
 
-Al completar una actividad —sin exigir respuestas perfectas— se habilita el Star Post que conduce a la siguiente sección. Los intentos de cruzarlo antes de tiempo devuelven a Sonic a una posición segura. Al tocarlo, funciona además como punto de reaparición al estilo de los actos de Sonic. Tras completar transportes se desbloquea la meta; alcanzarla inicia un periodo configurable de juego libre en Greenflower Zone Act 1. El resumen final conserva los resultados de las seis actividades.
+Al completar una actividad —sin exigir respuestas perfectas— se habilita el Star Post que conduce a la siguiente sección. Los intentos de cruzarlo antes de tiempo devuelven a Sonic a una posición segura. Al tocarlo, funciona además como punto de reaparición al estilo de los actos de Sonic. Un muro sólido adicional bloquea físicamente la línea de meta y desaparece únicamente después de completar transportes. Alcanzar la meta inicia un periodo configurable de juego libre en Greenflower Zone Act 1. El resumen final conserva los resultados de las seis actividades.
 
 Esto permite conservar dos datos diferentes:
 
@@ -96,7 +96,7 @@ El mapa educativo incluye:
 - dos zonas fonológicas para `PA` y `BA`;
 - tres zonas de vocabulario para animales, comidas y transportes;
 - cinco pasillos con Star Posts visibles que funcionan como checkpoints y puntos de reaparición;
-- una meta bloqueada hasta completar las seis etapas;
+- una meta cerrada por un muro sólido hasta completar las seis etapas;
 - inicio de jugador y nodos BSP válidos;
 - piso plano, espacios amplios, sin enemigos y sin precipicios.
 
@@ -224,7 +224,7 @@ fonoaventura Demo_001 5a0m
 
 ### 2. Completar las seis etapas
 
-Las actividades se activan al llegar al centro de cada zona: `MA`, `PA`, `BA`, animales, comidas y transportes. Los pictogramas aparecen en una posición fija dentro de la sala. Después de tocar una opción, el juego retira ambos pictogramas y espera el registro de la producción oral.
+Las actividades se activan automáticamente al entrar a cada zona: `MA`, `PA`, `BA`, animales, comidas y transportes. Los pictogramas ya aparecen en una posición fija y centrada dentro de la sala. Después de tocar una opción, el juego retira ambos pictogramas y espera el registro de la producción oral.
 
 Con la consola cerrada, la evaluadora presiona una tecla del `1` al `5`. También puede utilizar `fonoproduccion <1-5>` desde la consola. El siguiente par sólo aparece después de completar este paso.
 
