@@ -9,8 +9,8 @@ El proyecto combina programación y Fonoaudiología para construir una experienc
 
 ## Estado actual
 
-Versión del mod: **v0.0.9 experimental**<br>
-Última actualización del README: **21 de septiembre de 2026**
+Versión del mod: **v0.0.10 experimental**<br>
+Última actualización del README: **22 de septiembre de 2026**
 
 | Área | Estado | Avance disponible |
 |---|---:|---|
@@ -24,17 +24,17 @@ Versión del mod: **v0.0.9 experimental**<br>
 | Evaluación descriptiva oral | ✅ Flujo guiado | Pausa tras cada elección y registro manual con teclado o comandos `1–5` |
 | Herramienta externa | ✅ Funcional | Generador de reporte `.txt` en Python |
 | Mapa propio | 🧪 Bosquejo jugable | Empaquetado como `MAPA0`, con seis zonas y cinco pasillos, sin enemigos ni precipicios |
-| Aventura guiada | ✅ Funcional | Encadena las seis actividades y conserva sus resultados por separado |
+| Aventura guiada | ✅ Funcional | Encadena las seis actividades, conserva sus resultados y reinicia el circuito después del premio |
 | Progresión por checkpoints | ✅ Implementada | Cinco Star Posts visibles marcan los pasillos, guardan el respawn y desbloquean la zona siguiente |
 | Juego libre | ✅ Funcional | Premio de cinco minutos que continúa entre los actos de Greenflower Zone con temporizador HUD |
 | Demostración académica | ✅ Preparada | Recorrido completo: actividades, observación oral, juego libre y resumen final |
 | Integración automática al mapa | 🧪 Parcial | `fonoaventura` automatiza el recorrido; el inicio todavía se realiza desde consola |
 
-## Qué demuestra la versión v0.0.9
+## Qué demuestra la versión v0.0.10
 
 El modo recomendado inicia una aventura de seis etapas: sílabas iniciales `MA`, `PA` y `BA`, animales, comidas y transportes. Los objetos educativos aparecen automáticamente al iniciar cada etapa, anclados en una posición fija y centrada de su sala. En cada ejercicio se presentan dos pictogramas, se registra cuál fue tocado y el juego se detiene para que una persona adulta clasifique la producción oral con las teclas `1` a `5`.
 
-Al completar una actividad —sin exigir respuestas perfectas— se habilita el Star Post que conduce a la siguiente sección. Los intentos de cruzarlo antes de tiempo devuelven a Sonic a una posición segura. Al tocarlo, funciona además como punto de reaparición al estilo de los actos de Sonic. Un muro sólido adicional bloquea físicamente la línea de meta y desaparece únicamente después de completar transportes. Alcanzar la meta inicia un periodo configurable de juego libre en Greenflower Zone. Si Sonic termina Act 1 antes de que venza el reloj, avanza normalmente a Act 2 y conserva el tiempo restante. El regreso a `MAPA0` ocurre solo al agotarse el temporizador o mediante `fonofinjuego`.
+Al completar una actividad —sin exigir respuestas perfectas— se habilita el Star Post que conduce a la siguiente sección. Los intentos de cruzarlo antes de tiempo devuelven a Sonic a una posición segura. Al tocarlo, funciona además como punto de reaparición al estilo de los actos de Sonic. Un muro sólido adicional bloquea físicamente la línea de meta y desaparece únicamente después de completar transportes. Alcanzar la meta inicia un periodo configurable de juego libre en Greenflower Zone. Si Sonic termina Act 1 antes de que venza el reloj, avanza normalmente a Act 2 y conserva el tiempo restante. Al agotarse el temporizador, vuelve a `MAPA0`, muestra el resumen anterior y comienza automáticamente un nuevo circuito desde la actividad `MA`.
 
 Esto permite conservar dos datos diferentes:
 
@@ -238,7 +238,7 @@ Al finalizar todos los pares de una etapa, el HUD indica que el checkpoint está
 
 Al registrar la última producción de transportes se desbloquea la meta educativa. Cuando Sonic llega a ella, el juego carga Greenflower Zone Act 1 y comienza el temporizador de cinco minutos. Terminar el acto no interrumpe el premio: Sonic avanza a Act 2 y el reloj continúa desde el tiempo restante.
 
-El premio se obtiene por **completar el recorrido**, no por acertar todas las respuestas. Solo al agotarse el tiempo se regresa automáticamente a `MAPA0`. El tiempo puede ajustarse antes de iniciar:
+El premio se obtiene por **completar el recorrido**, no por acertar todas las respuestas. Solo al agotarse el tiempo se regresa automáticamente a `MAPA0`; allí se reconstruyen los checkpoints, el muro de la meta y las actividades para comenzar otra vez desde la etapa 1. El tiempo puede ajustarse antes de iniciar:
 
 ```text
 fonotiempo 3
@@ -250,7 +250,7 @@ La persona adulta puede terminar antes con:
 fonofinjuego
 ```
 
-Al agotarse el tiempo o llegar a la meta, Sonic vuelve a `MAPA0` y se muestra el resumen conjunto. Puede revisarse nuevamente con `fonoresumen`.
+Al agotarse el tiempo, Sonic vuelve a `MAPA0`, se muestra el resumen del recorrido anterior y comienza automáticamente una nueva ronda educativa. El comando `fonofinjuego` permite volver antes y cerrar la sesión sin iniciar otra ronda.
 
 > [!TIP]
 > Para comprobar sólo el cambio de mapa y el HUD sin realizar todas las actividades, usa `fonojuegotest 30`. Este comando de desarrollo inicia 30 segundos de juego libre.
@@ -446,7 +446,7 @@ Segunda actividad y conservación de ambos resultados
               ↓
 Juego libre temporizado a través de los actos de Greenflower Zone
               ↓
-Resumen conjunto de la aventura
+Resumen conjunto de la aventura y reinicio de las actividades
               ↓
 Salida estructurada individual con fonojson
               ↓

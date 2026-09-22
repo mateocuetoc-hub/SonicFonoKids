@@ -16,7 +16,7 @@ local fonoLimpiarCheckpointsVisuales
 local fonoLimpiarMuroMeta
 
 print("====================================")
-print("Sonic FonoKids v0.0.9 cargado")
+print("Sonic FonoKids v0.0.10 cargado")
 print("====================================")
 
 local nombreProyecto = "Sonic FonoKids"
@@ -101,6 +101,7 @@ addHook("PlayerSpawn", function(player)
     or fonoFlujoSesion.fase == "cambiando_juego"
     or fonoFlujoSesion.fase == "juego"
     or fonoFlujoSesion.fase == "regresando"
+    or fonoFlujoSesion.fase == "reiniciando_educativa"
     or fonoFlujoSesion.fase == "finalizada") then
         return
     end
@@ -3352,9 +3353,9 @@ end
 -- ==========================================
 -- AVENTURA EDUCATIVA Y PREMIO DE JUEGO LIBRE
 -- ==========================================
--- Flujo v0.0.9:
+-- Flujo v0.0.10:
 --   MAPA0 -> seis actividades por secciones y checkpoints -> meta
---   -> MAP01 por tiempo limitado -> MAPA0.
+--   -> Greenflower por tiempo limitado -> MAPA0 -> nuevo ciclo educativo.
 -- El progreso depende de completar cada actividad, no de acertarlas todas.
 
 fonoFlujoSesion = {
@@ -3372,6 +3373,7 @@ fonoFlujoSesion = {
     mapaEducativo = 100,
     mapaJuego = 1,
     reporteFinalPendiente = false,
+    reiniciarActividadesAlVolver = false,
     salidaConfigurada = false,
     checkpointActual = 0,
     sectorAnterior = nil,
@@ -3584,6 +3586,7 @@ fonoReiniciarFlujo = function()
     fonoFlujoSesion.avisoTreintaSegundos = false
     fonoFlujoSesion.conservarSesion = false
     fonoFlujoSesion.reporteFinalPendiente = false
+    fonoFlujoSesion.reiniciarActividadesAlVolver = false
     fonoFlujoSesion.salidaConfigurada = false
     fonoFlujoSesion.checkpointActual = 0
     fonoFlujoSesion.sectorAnterior = nil
@@ -3846,6 +3849,51 @@ local function fonoIniciarActividadAventura(player, indice)
     return true
 end
 
+local function fonoIniciarCicloEducativo(player, esReinicioAutomatico)
+    if player == nil or player.mo == nil or player.mo.valid == false then
+        return false
+    end
+
+    fonoReiniciarFlujo()
+    fonoFlujoSesion.activo = true
+    fonoCrearCheckpointsVisuales()
+    fonoCrearMuroMeta()
+
+    P_SetOrigin(player.mo, fonoMapaAventura.inicioX,
+        fonoMapaAventura.inicioY, fonoMapaAventura.inicioZ)
+    player.starpostnum = 0
+    player.starpostbit = 0
+    player.mo.angle = 0
+    player.mo.momx = 0
+    player.mo.momy = 0
+    player.mo.momz = 0
+    player.rings = 20
+
+    CONS_Printf(player, "========== AVENTURA SONIC FONOKIDS ==========")
+
+    if esReinicioAutomatico == true then
+        CONS_Printf(player, "El tiempo de juego libre termino.")
+        CONS_Printf(player, "Comienza un nuevo recorrido educativo desde la etapa 1.")
+    end
+
+    CONS_Printf(player, "Participante anonimo: "
+        .. tostring(fonoDatosParticipante.codigo))
+    CONS_Printf(player, "Edad: " .. tostring(fonoDatosParticipante.edad))
+    CONS_Printf(player, "Completa seis actividades distribuidas por el nivel.")
+    CONS_Printf(player, "Los objetos aparecen automaticamente al entrar a cada etapa.")
+    CONS_Printf(player, "Cada checkpoint se abre al terminar la etapa anterior.")
+    CONS_Printf(player, "El muro de la meta desaparece al completar transportes.")
+    CONS_Printf(player, "No es necesario acertar todo: se premia completar el recorrido.")
+    CONS_Printf(player, "================================================")
+
+    if esReinicioAutomatico == true and fonoSetHud ~= nil then
+        fonoSetHud(player, "NUEVO CICLO EDUCATIVO",
+            "ETAPA 1: SILABA MA", TICRATE * 8)
+    end
+
+    return fonoIniciarActividadAventura(player, 1)
+end
+
 local function fonoIrAlJuegoLibre(player)
     if fonoFlujoSesion.fase == "cambiando_juego"
     or fonoFlujoSesion.fase == "juego" then
@@ -3864,7 +3912,7 @@ local function fonoIrAlJuegoLibre(player)
     G_ExitLevel()
 end
 
-local function fonoRegresarAlMapaEducativo(player, motivo)
+local function fonoRegresarAlMapaEducativo(player, motivo, reiniciarActividades)
     if fonoFlujoSesion.fase == "regresando"
     or fonoFlujoSesion.fase == "finalizada" then
         return
@@ -3873,6 +3921,7 @@ local function fonoRegresarAlMapaEducativo(player, motivo)
     fonoFlujoSesion.fase = "regresando"
     fonoFlujoSesion.conservarSesion = true
     fonoFlujoSesion.salidaConfigurada = true
+    fonoFlujoSesion.reiniciarActividadesAlVolver = reiniciarActividades == true
 
     if player ~= nil then
         CONS_Printf(player, tostring(motivo or "Juego libre finalizado."))
@@ -3933,7 +3982,8 @@ addHook("ThinkFrame", function()
     end
 
     if fonoFlujoSesion.tiempoJuegoRestante <= 0 then
-        fonoRegresarAlMapaEducativo(consoleplayer, "Tiempo terminado. ¡Muy bien!")
+        fonoRegresarAlMapaEducativo(consoleplayer,
+            "Tiempo terminado. ¡Muy bien!", true)
     end
 end)
 
@@ -3950,9 +4000,15 @@ addHook("MapLoad", function()
 
     if fonoFlujoSesion.fase == "regresando"
     and gamemap == fonoFlujoSesion.mapaEducativo then
-        fonoFlujoSesion.fase = "finalizada"
+        if fonoFlujoSesion.reiniciarActividadesAlVolver == true then
+            fonoFlujoSesion.fase = "reiniciando_educativa"
+        else
+            fonoFlujoSesion.fase = "finalizada"
+        end
+
         fonoFlujoSesion.activo = false
-        fonoFlujoSesion.conservarSesion = false
+        fonoFlujoSesion.conservarSesion =
+            fonoFlujoSesion.reiniciarActividadesAlVolver == true
         fonoFlujoSesion.reporteFinalPendiente = true
         return
     end
@@ -3972,6 +4028,16 @@ addHook("PlayerSpawn", function(player)
         CONS_Printf(player, "El temporizador continua entre un acto y el siguiente.")
         CONS_Printf(player, "La actividad educativa ya fue guardada.")
         CONS_Printf(player, "=====================================")
+        return
+    end
+
+    if fonoFlujoSesion.fase == "reiniciando_educativa"
+    and fonoFlujoSesion.reporteFinalPendiente == true then
+        fonoFlujoSesion.reporteFinalPendiente = false
+
+        CONS_Printf(player, "Recorrido anterior completado.")
+        fonoMostrarResumenAventura(player)
+        fonoIniciarCicloEducativo(player, true)
         return
     end
 
@@ -4166,7 +4232,8 @@ COM_AddCommand("fonoaventura", function(player, codigo, edad)
 
     if fonoFlujoSesion.fase == "juego"
     or fonoFlujoSesion.fase == "cambiando_juego"
-    or fonoFlujoSesion.fase == "regresando" then
+    or fonoFlujoSesion.fase == "regresando"
+    or fonoFlujoSesion.fase == "reiniciando_educativa" then
         CONS_Printf(player, "Ya hay una aventura en transicion o juego libre.")
         return
     end
@@ -4183,32 +4250,7 @@ COM_AddCommand("fonoaventura", function(player, codigo, edad)
 
     fonoDatosParticipante.codigo = tostring(codigo)
     fonoDatosParticipante.edad = tostring(edad)
-    fonoReiniciarFlujo()
-
-    fonoFlujoSesion.activo = true
-    fonoCrearCheckpointsVisuales()
-    fonoCrearMuroMeta()
-
-    P_SetOrigin(player.mo, fonoMapaAventura.inicioX,
-        fonoMapaAventura.inicioY, fonoMapaAventura.inicioZ)
-    player.starpostnum = 0
-    player.starpostbit = 0
-    player.mo.angle = 0
-    player.mo.momx = 0
-    player.mo.momy = 0
-    player.mo.momz = 0
-
-    CONS_Printf(player, "========== AVENTURA SONIC FONOKIDS ==========")
-    CONS_Printf(player, "Participante anonimo: " .. tostring(codigo))
-    CONS_Printf(player, "Edad: " .. tostring(edad))
-    CONS_Printf(player, "Completa seis actividades distribuidas por el nivel.")
-    CONS_Printf(player, "Los objetos aparecen automaticamente al entrar a cada etapa.")
-    CONS_Printf(player, "Cada checkpoint se abre al terminar la etapa anterior.")
-    CONS_Printf(player, "El muro de la meta desaparece al completar transportes.")
-    CONS_Printf(player, "No es necesario acertar todo: se premia completar el recorrido.")
-    CONS_Printf(player, "================================================")
-
-    fonoIniciarActividadAventura(player, 1)
+    fonoIniciarCicloEducativo(player, false)
 end)
 
 COM_AddCommand("fonotiempo", function(player, minutos)
@@ -4250,7 +4292,8 @@ COM_AddCommand("fonofinjuego", function(player)
         return
     end
 
-    fonoRegresarAlMapaEducativo(player, "Juego libre finalizado por la persona adulta.")
+    fonoRegresarAlMapaEducativo(player,
+        "Juego libre finalizado por la persona adulta.", false)
 end)
 
 COM_AddCommand("fonoresumen", function(player)
