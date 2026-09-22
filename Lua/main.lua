@@ -16,7 +16,7 @@ local fonoLimpiarCheckpointsVisuales
 local fonoLimpiarMuroMeta
 
 print("====================================")
-print("Sonic FonoKids v0.0.8 cargado")
+print("Sonic FonoKids v0.0.9 cargado")
 print("====================================")
 
 local nombreProyecto = "Sonic FonoKids"
@@ -3352,7 +3352,7 @@ end
 -- ==========================================
 -- AVENTURA EDUCATIVA Y PREMIO DE JUEGO LIBRE
 -- ==========================================
--- Flujo v0.0.8:
+-- Flujo v0.0.9:
 --   MAPA0 -> seis actividades por secciones y checkpoints -> meta
 --   -> MAP01 por tiempo limitado -> MAPA0.
 -- El progreso depende de completar cada actividad, no de acertarlas todas.
@@ -3957,20 +3957,19 @@ addHook("MapLoad", function()
         return
     end
 
-    if fonoFlujoSesion.fase == "juego"
-    and gamemap ~= fonoFlujoSesion.mapaJuego then
-        fonoFlujoSesion.fase = "finalizada"
-        fonoFlujoSesion.activo = false
+    if fonoFlujoSesion.fase == "juego" then
+        -- Las salidas normales conservan el premio: MAP01 puede avanzar
+        -- a MAP02 y a los actos siguientes sin reiniciar el temporizador.
         fonoFlujoSesion.conservarSesion = false
-        fonoFlujoSesion.reporteFinalPendiente = true
+        fonoFlujoSesion.salidaConfigurada = false
     end
 end)
 
 addHook("PlayerSpawn", function(player)
     if fonoFlujoSesion.fase == "juego" then
         CONS_Printf(player, "========== ¡HORA DE JUGAR! ==========")
-        CONS_Printf(player, "Explora Greenflower Zone Act 1.")
-        CONS_Printf(player, "Tiempo disponible: " .. tostring(fonoFlujoSesion.duracionJuegoSegundos) .. " segundos.")
+        CONS_Printf(player, "Explora libremente los actos de Greenflower Zone.")
+        CONS_Printf(player, "El temporizador continua entre un acto y el siguiente.")
         CONS_Printf(player, "La actividad educativa ya fue guardada.")
         CONS_Printf(player, "=====================================")
         return
@@ -4100,18 +4099,8 @@ addHook("PlayerThink", function(player)
         return
     end
 
-    if fonoFlujoSesion.fase ~= "juego"
-    or fonoFlujoSesion.salidaConfigurada == true then
-        return
-    end
-
-    if player.exiting then
-        fonoFlujoSesion.fase = "regresando"
-        fonoFlujoSesion.conservarSesion = true
-        fonoFlujoSesion.salidaConfigurada = true
-        G_SetCustomExitVars(fonoFlujoSesion.mapaEducativo, 1)
-        CONS_Printf(player, "¡Llegaste a la meta! Regresaremos a Sonic FonoKids.")
-    end
+    -- En juego libre no interceptamos player.exiting. El motor puede cargar
+    -- el acto siguiente normalmente; solo el temporizador ordena volver.
 end)
 
 addHook("HUD", function(v, player)

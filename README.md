@@ -9,7 +9,7 @@ El proyecto combina programación y Fonoaudiología para construir una experienc
 
 ## Estado actual
 
-Versión del mod: **v0.0.8 experimental**<br>
+Versión del mod: **v0.0.9 experimental**<br>
 Última actualización del README: **21 de septiembre de 2026**
 
 | Área | Estado | Avance disponible |
@@ -26,15 +26,15 @@ Versión del mod: **v0.0.8 experimental**<br>
 | Mapa propio | 🧪 Bosquejo jugable | Empaquetado como `MAPA0`, con seis zonas y cinco pasillos, sin enemigos ni precipicios |
 | Aventura guiada | ✅ Funcional | Encadena las seis actividades y conserva sus resultados por separado |
 | Progresión por checkpoints | ✅ Implementada | Cinco Star Posts visibles marcan los pasillos, guardan el respawn y desbloquean la zona siguiente |
-| Juego libre | ✅ Funcional | Premio de cinco minutos en Greenflower Zone Act 1 con temporizador HUD |
+| Juego libre | ✅ Funcional | Premio de cinco minutos que continúa entre los actos de Greenflower Zone con temporizador HUD |
 | Demostración académica | ✅ Preparada | Recorrido completo: actividades, observación oral, juego libre y resumen final |
 | Integración automática al mapa | 🧪 Parcial | `fonoaventura` automatiza el recorrido; el inicio todavía se realiza desde consola |
 
-## Qué demuestra la versión v0.0.8
+## Qué demuestra la versión v0.0.9
 
 El modo recomendado inicia una aventura de seis etapas: sílabas iniciales `MA`, `PA` y `BA`, animales, comidas y transportes. Los objetos educativos aparecen automáticamente al iniciar cada etapa, anclados en una posición fija y centrada de su sala. En cada ejercicio se presentan dos pictogramas, se registra cuál fue tocado y el juego se detiene para que una persona adulta clasifique la producción oral con las teclas `1` a `5`.
 
-Al completar una actividad —sin exigir respuestas perfectas— se habilita el Star Post que conduce a la siguiente sección. Los intentos de cruzarlo antes de tiempo devuelven a Sonic a una posición segura. Al tocarlo, funciona además como punto de reaparición al estilo de los actos de Sonic. Un muro sólido adicional bloquea físicamente la línea de meta y desaparece únicamente después de completar transportes. Alcanzar la meta inicia un periodo configurable de juego libre en Greenflower Zone Act 1. El resumen final conserva los resultados de las seis actividades.
+Al completar una actividad —sin exigir respuestas perfectas— se habilita el Star Post que conduce a la siguiente sección. Los intentos de cruzarlo antes de tiempo devuelven a Sonic a una posición segura. Al tocarlo, funciona además como punto de reaparición al estilo de los actos de Sonic. Un muro sólido adicional bloquea físicamente la línea de meta y desaparece únicamente después de completar transportes. Alcanzar la meta inicia un periodo configurable de juego libre en Greenflower Zone. Si Sonic termina Act 1 antes de que venza el reloj, avanza normalmente a Act 2 y conserva el tiempo restante. El regreso a `MAPA0` ocurre solo al agotarse el temporizador o mediante `fonofinjuego`.
 
 Esto permite conservar dos datos diferentes:
 
@@ -193,12 +193,16 @@ Para confirmar que el mapa quedó dentro del paquete:
 unzip -l "$HOME/.var/app/org.srb2.SRB2/.srb2/addons/SonicFonoKids.pk3" | grep -i MAPA0
 ```
 
-## Abrir el juego y cargar el mapa educativo
+## Abrir el juego en OpenGL y cargar el mapa educativo
 
 ```bash
-flatpak run org.srb2.SRB2 \
-  -file "$HOME/.var/app/org.srb2.SRB2/.srb2/addons/SonicFonoKids.pk3"
+./run-opengl.sh
 ```
+
+El lanzador solicita explícitamente el renderizador OpenGL, necesario para usar
+modelos poligonales cuando el paquete de modelos está instalado. Si OpenGL no
+inicia, ejecuta `flatpak update` y comprueba los controladores disponibles con
+`flatpak --gl-drivers`.
 
 Cuando el mod se inicia con `-file`, no se debe cargar el mismo PK3 nuevamente desde el menú **Addons**.
 
@@ -232,9 +236,9 @@ Al finalizar todos los pares de una etapa, el HUD indica que el checkpoint está
 
 ### 3. Jugar el premio
 
-Al registrar la última producción de transportes se desbloquea la meta educativa. Cuando Sonic llega a ella, el juego carga Greenflower Zone Act 1 y comienza el temporizador de cinco minutos.
+Al registrar la última producción de transportes se desbloquea la meta educativa. Cuando Sonic llega a ella, el juego carga Greenflower Zone Act 1 y comienza el temporizador de cinco minutos. Terminar el acto no interrumpe el premio: Sonic avanza a Act 2 y el reloj continúa desde el tiempo restante.
 
-El premio se obtiene por **completar el recorrido**, no por acertar todas las respuestas. El tiempo puede ajustarse antes de iniciar:
+El premio se obtiene por **completar el recorrido**, no por acertar todas las respuestas. Solo al agotarse el tiempo se regresa automáticamente a `MAPA0`. El tiempo puede ajustarse antes de iniciar:
 
 ```text
 fonotiempo 3
@@ -440,7 +444,7 @@ Reporte descriptivo + detalle por par
               ↓
 Segunda actividad y conservación de ambos resultados
               ↓
-Juego libre temporizado en Greenflower Zone Act 1
+Juego libre temporizado a través de los actos de Greenflower Zone
               ↓
 Resumen conjunto de la aventura
               ↓
