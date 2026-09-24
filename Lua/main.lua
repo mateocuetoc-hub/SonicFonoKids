@@ -16,7 +16,7 @@ local fonoLimpiarCheckpointsVisuales
 local fonoLimpiarMuroMeta
 
 print("====================================")
-print("Sonic FonoKids v0.0.11 cargado")
+print("Sonic FonoKids v0.0.12 cargado")
 print("====================================")
 
 local nombreProyecto = "Sonic FonoKids"
@@ -4197,6 +4197,11 @@ addHook("PlayerThink", function(player)
     -- el acto siguiente normalmente; solo el temporizador ordena volver.
 end)
 
+-- Deja libre el HUD nativo de SRB2 (SCORE, TIME y RINGS) en la esquina.
+-- La aventura y el premio comparten el mismo origen para no saltar de lugar.
+local fonoHudAventuraX = 8
+local fonoHudAventuraY = 72
+
 addHook("HUD", function(v, player)
     if fonoFlujoSesion.activo ~= true
     or gamemap ~= fonoFlujoSesion.mapaEducativo then
@@ -4220,12 +4225,14 @@ addHook("HUD", function(v, player)
         estado = "META DESBLOQUEADA"
     end
 
-    v.drawString(8, 8, "SONIC FONOKIDS", flags, "left")
-    v.drawString(8, 18, "ETAPA " .. tostring(fonoFlujoSesion.indiceActividad)
+    v.drawString(fonoHudAventuraX, fonoHudAventuraY, "SONIC FONOKIDS", flags, "left")
+    v.drawString(fonoHudAventuraX, fonoHudAventuraY + 10,
+        "ETAPA " .. tostring(fonoFlujoSesion.indiceActividad)
         .. "/" .. tostring(#fonoActividadesAventura)
         .. ": " .. tostring(actividad.nombreCorto), flags, "left")
-    v.drawString(8, 30, estado, flags, "left")
-    v.drawString(8, 42, "CHECKPOINTS " .. tostring(fonoFlujoSesion.checkpointActual)
+    v.drawString(fonoHudAventuraX, fonoHudAventuraY + 22, estado, flags, "left")
+    v.drawString(fonoHudAventuraX, fonoHudAventuraY + 34,
+        "CHECKPOINTS " .. tostring(fonoFlujoSesion.checkpointActual)
         .. "/" .. tostring(fonoMapaAventura.checkpointsTotal), flags, "left")
 end, "game")
 
@@ -4240,12 +4247,14 @@ addHook("HUD", function(v, player)
     local tiempoTexto = string.format("%02d:%02d", minutos, segundos)
     local flags = V_SNAPTOTOP|V_SNAPTOLEFT
 
-    v.drawString(8, 8, "SONIC FONOKIDS", flags, "left")
-    v.drawString(8, 18, "JUEGO LIBRE", flags, "left")
-    v.drawString(8, 30, "TIEMPO " .. tiempoTexto, flags, "left")
+    v.drawString(fonoHudAventuraX, fonoHudAventuraY, "SONIC FONOKIDS", flags, "left")
+    v.drawString(fonoHudAventuraX, fonoHudAventuraY + 10, "JUEGO LIBRE", flags, "left")
+    v.drawString(fonoHudAventuraX, fonoHudAventuraY + 22,
+        "TIEMPO " .. tiempoTexto, flags, "left")
 
     if fonoFlujoSesion.tiempoJuegoRestante <= TICRATE * 30 then
-        v.drawString(8, 42, "¡ULTIMOS SEGUNDOS!", flags, "left")
+        v.drawString(fonoHudAventuraX, fonoHudAventuraY + 34,
+            "¡ULTIMOS SEGUNDOS!", flags, "left")
     end
 end, "game")
 
