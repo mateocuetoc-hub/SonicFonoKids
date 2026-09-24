@@ -9,8 +9,8 @@ El proyecto combina programación y Fonoaudiología para construir una experienc
 
 ## Estado actual
 
-Versión del mod: **v0.0.11 experimental**<br>
-Última actualización del README: **22 de septiembre de 2026**
+Versión del mod: **v0.0.12 experimental**<br>
+Última actualización del README: **24 de septiembre de 2026**
 
 | Área | Estado | Avance disponible |
 |---|---:|---|
@@ -18,7 +18,7 @@ Versión del mod: **v0.0.11 experimental**<br>
 | Actividades fonológicas | ✅ Funcional | Sílabas iniciales `MA`, `PA` y `BA` |
 | Elección entre pares | ✅ Funcional | Dos pictogramas simultáneos con alternancia de lado correcto |
 | Vocabulario | ✅ Funcional | Categorías animales, comidas y transportes |
-| HUD y feedback | ✅ Funcional | Objetivo, alternativas, progreso y guía de evaluación oral `1–5` |
+| HUD y feedback | ✅ Funcional | Progreso de etapas y tiempo libre debajo de `RINGS`, más guía de evaluación oral `1–5` |
 | Pictogramas | ✅ Integrados | 18 palabras con sprites propios que aparecen automáticamente al entrar a cada etapa |
 | Reportes | ✅ Funcional | Reporte en consola, detalle por par y salida tipo JSON |
 | Evaluación descriptiva oral | ✅ Flujo guiado | Pausa tras cada elección y registro manual con teclado o comandos `1–5` |
@@ -30,9 +30,11 @@ Versión del mod: **v0.0.11 experimental**<br>
 | Demostración académica | ✅ Preparada | Recorrido completo: actividades, observación oral, juego libre y resumen final |
 | Integración automática al mapa | 🧪 Parcial | `fonoaventura` automatiza el recorrido; el inicio todavía se realiza desde consola |
 
-## Qué demuestra la versión v0.0.11
+## Qué demuestra la versión v0.0.12
 
 El modo recomendado inicia una aventura de seis etapas: sílabas iniciales `MA`, `PA` y `BA`, animales, comidas y transportes. Los objetos educativos aparecen automáticamente al iniciar cada etapa, anclados en una posición fija y centrada de su sala. En cada ejercicio se presentan dos pictogramas, se registra cuál fue tocado y el juego se detiene para que una persona adulta clasifique la producción oral con las teclas `1` a `5`.
+
+El HUD de etapas y del juego libre se presenta debajo del contador de anillos, dejando visible la información original de SRB2 durante la grabación.
 
 Al completar una actividad —sin exigir respuestas perfectas— se habilita el Star Post que conduce a la siguiente sección. Los intentos de cruzarlo antes de tiempo devuelven a Sonic a una posición segura. Al tocarlo, funciona además como punto de reaparición al estilo de los actos de Sonic. Un muro sólido adicional bloquea físicamente la línea de meta y desaparece únicamente después de completar transportes. Alcanzar la meta inicia un periodo configurable de juego libre en Greenflower Zone. Si Sonic termina Act 1 antes de que venza el reloj, avanza normalmente a Act 2 y conserva el tiempo restante. Al agotarse el temporizador, vuelve a `MAPA0`, muestra el resumen anterior y comienza automáticamente un nuevo circuito desde la actividad `MA`.
 
