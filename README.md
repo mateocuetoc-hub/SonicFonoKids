@@ -9,8 +9,10 @@ El proyecto combina programación y Fonoaudiología para construir una experienc
 
 ## Estado actual
 
-Versión del mod: **v0.0.12 experimental**<br>
-Última actualización del README: **24 de septiembre de 2026**
+Versión del mod: **v0.0.13 experimental**, rama `optimizar-juego`<br>
+Última actualización del README: **2 de octubre de 2026**
+
+Esta rama conserva el recorrido de v0.0.12 y optimiza sus registros, limpieza y estados. Las pruebas de lógica con el intérprete Lua de SRB2 y la verificación del PK3 pasan; la validación visual y jugable de estos cambios en SRB2 está pendiente. La tabla siguiente describe las funcionalidades del proyecto, no una nueva prueba visual. Ver [cambios y comprobación local](Docs/optimizacion.md).
 
 | Área | Estado | Avance disponible |
 |---|---:|---|
@@ -30,7 +32,7 @@ Versión del mod: **v0.0.12 experimental**<br>
 | Demostración académica | ✅ Preparada | Recorrido completo: actividades, observación oral, juego libre y resumen final |
 | Integración automática al mapa | 🧪 Parcial | `fonoaventura` automatiza el recorrido; el inicio todavía se realiza desde consola |
 
-## Qué demuestra la versión v0.0.12
+## Qué demuestra la versión v0.0.13
 
 El modo recomendado inicia una aventura de seis etapas: sílabas iniciales `MA`, `PA` y `BA`, animales, comidas y transportes. Los objetos educativos aparecen automáticamente al iniciar cada etapa, anclados en una posición fija y centrada de su sala. En cada ejercicio se presentan dos pictogramas, se registra cuál fue tocado y el juego se detiene para que una persona adulta clasifique la producción oral con las teclas `1` a `5`.
 
@@ -222,11 +224,13 @@ La demostración completa dura aproximadamente entre ocho y doce minutos, incluy
 ### 1. Iniciar la aventura con una sesión anónima
 
 ```text
+devmode 1
 map MAPA0
+fonotiempo 5
 fonoaventura Demo_001 5a0m
 ```
 
-`Demo_001` es un identificador ficticio y `5a0m` representa una edad de cinco años y cero meses. No se deben utilizar nombres reales.
+Estos cuatro comandos bastan después de cargar el addon. Las actividades, pictogramas, checkpoints y el regreso educativo se gestionan automáticamente; no se necesitan comandos de limpieza. `Demo_001` es un identificador ficticio y `5a0m` representa una edad de cinco años y cero meses. No se deben utilizar nombres reales.
 
 ### 2. Completar las seis etapas
 
@@ -259,13 +263,13 @@ Al agotarse el tiempo, Sonic vuelve a `MAPA0`, se muestra el resumen del recorri
 
 ### Recuperación rápida durante una demostración
 
-Si quedan objetos activos o se necesita repetir la prueba:
+Para repetir el recorrido en `MAPA0`, basta con volver a iniciarlo:
 
 ```text
-fonosalalimpia
-fonoreset
 fonoaventura Demo_001 5a0m
 ```
+
+El inicio limpia los objetos y estados anteriores. Durante el premio, usa `fonofinjuego` para regresar antes; luego puedes iniciar otra aventura. `fonoreset` y `fonosalalimpia` siguen disponibles para depuración.
 
 ### Prueba de control de actividades
 
