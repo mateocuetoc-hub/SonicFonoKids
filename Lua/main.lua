@@ -14,9 +14,56 @@ local fonoReiniciarFlujo
 local fonoCentroActividad
 local fonoLimpiarCheckpointsVisuales
 local fonoLimpiarMuroMeta
+local fonoLimpiarObjetosPares
+local fonoSetHud
+local fonoAplicarSpritePalabra
+local fonoConfigurarBancoPorSilaba
+
+-- Los comandos de actividad comparten las mismas reglas de entrada.
+-- Las llamadas internas de la aventura no pasan por este registro.
+local fonoComandosActividad = {
+    fonoquiz = true, fonokids = true, fonoobjetosdemo = true,
+    fononivel1 = true, fononivel1auto = true, fononivel1seq = true,
+    fonoma = true, fonopa = true, fonoba = true, fonovocab = true,
+    fonocomida = true, fonotransporte = true, fonodemo = true,
+    fonodemoma = true, fonodemovocab = true, fonoma2 = true,
+    fonoparesma = true, fonodemopares = true, fonovocab2 = true,
+    fonocomida2 = true, fonotransporte2 = true, fonodemovocab2 = true,
+    fonopa2 = true, fonoba2 = true,
+    fonodemopa2 = true, fonodemoba2 = true, fonosala1 = true,
+    fonosala2 = true
+}
+local fonoComandosMA = {
+    fonoquiz = true, fonokids = true, fonoobjetosdemo = true,
+    fononivel1 = true, fononivel1auto = true, fononivel1seq = true
+}
+
+local function fonoRegistrarComando(nombre, accion)
+    COM_AddCommand(nombre, function(player, ...)
+        if fonoComandosActividad[nombre] == true then
+            if player == nil or player.mo == nil or player.mo.valid == false then
+                CONS_Printf(player, "Entra a un mapa antes de iniciar una actividad.")
+                return
+            end
+            if fonoFlujoSesion.fase == "juego"
+            or fonoFlujoSesion.fase == "cambiando_juego"
+            or fonoFlujoSesion.fase == "regresando"
+            or fonoFlujoSesion.fase == "reiniciando_educativa" then
+                CONS_Printf(player, "Espera el regreso al mapa educativo para iniciar otra actividad.")
+                return
+            end
+            fonoLimpiarObjetosActivos()
+            fonoReiniciarFlujo()
+            if fonoComandosMA[nombre] == true then
+                fonoConfigurarBancoPorSilaba("MA")
+            end
+        end
+        accion(player, ...)
+    end)
+end
 
 print("====================================")
-print("Sonic FonoKids v0.0.12 cargado")
+print("Sonic FonoKids v0.0.13 cargado")
 print("====================================")
 
 local nombreProyecto = "Sonic FonoKids"
@@ -24,10 +71,14 @@ local jugadorDemo = "Nino_001"
 local objetivoActual = "MA"
 
 local sesion = {}
+local fonoDatosParticipante = { codigo = jugadorDemo, edad = "no_registrada" }
 
 local function iniciarSesion()
     sesion = {
-        jugador = jugadorDemo,
+        jugador = fonoDatosParticipante.codigo,
+        edad = fonoDatosParticipante.edad,
+        producciones_pendientes = {},
+        producciones_detalle = {},
         nivel = gamemap,
         actividad = "conciencia_fonologica_silaba_inicial",
         objetivo = objetivoActual,
@@ -41,12 +92,17 @@ local function iniciarSesion()
     }
 end
 
+iniciarSesion()
+
 local function tiempoTranscurrido()
     if sesion.tiempo_inicio == nil then
         return 0
     end
 
-    return (leveltime - sesion.tiempo_inicio) / TICRATE
+    local fin = sesion.tiempo_fin
+    if fin == nil then fin = leveltime end
+    if fin < sesion.tiempo_inicio then return 0 end
+    return (fin - sesion.tiempo_inicio) / TICRATE
 end
 
 local function registrarAyuda(player)
@@ -78,18 +134,6 @@ local function mostrarReporte(player)
 
     CONS_Printf(player, "===================================")
 end
-
-addHook("MapLoad", function()
-    if fonoFlujoSesion ~= nil
-    and (fonoFlujoSesion.activo == true
-    or fonoFlujoSesion.conservarSesion == true
-    or fonoFlujoSesion.fase == "juego"
-    or fonoFlujoSesion.fase == "regresando") then
-        return
-    end
-
-    iniciarSesion()
-end)
 
 addHook("PlayerSpawn", function(player)
     if sesion.jugador == nil then
@@ -154,7 +198,7 @@ COM_AddCommand("fonoreset", function(player)
         fonoReiniciarFlujo()
     end
 
-    player.rings = 20
+    if player ~= nil then player.rings = 20 end
     CONS_Printf(player, "Sesion reiniciada.")
 end)
 
@@ -296,10 +340,19 @@ end)
 
 COM_AddCommand("fonolista", function(player)
     CONS_Printf(player, "===== BANCO DE PALABRAS =====")
-    CONS_Printf(player, "Objetivo actual: silaba inicial " .. tostring(objetivoActual))
-    CONS_Printf(player, "Correctas: mano, mapa, mama, masa")
-    CONS_Printf(player, "Distractores fonologicos: pato, bala")
-    CONS_Printf(player, "Distractores no fonologicos: luna, sopa")
+    CONS_Printf(player, "Objetivo actual: " .. tostring(sesion.objetivo))
+    local correctas, distractores = {}, {}
+    for palabra, dato in pairs(bancoPalabras) do
+        if dato.correcto == true then
+            table.insert(correctas, palabra)
+        else
+            table.insert(distractores, palabra)
+        end
+    end
+    table.sort(correctas)
+    table.sort(distractores)
+    CONS_Printf(player, "Correctas: " .. table.concat(correctas, ", "))
+    CONS_Printf(player, "Distractores: " .. table.concat(distractores, ", "))
     CONS_Printf(player, "=============================")
 end)
 
@@ -395,6 +448,7 @@ local function mostrarPreguntaQuiz(player)
     if quizFono.indice > #quizFono.preguntas then
         quizFono.activo = false
         sesion.completado = true
+        sesion.tiempo_fin = leveltime
         CONS_Printf(player, "Quiz completado.")
         CONS_Printf(player, "Usa fonoreporte o fonoia para ver resultados.")
         return
@@ -451,8 +505,10 @@ local function responderQuiz(player, respuestaSi)
     mostrarPreguntaQuiz(player)
 end
 
-COM_AddCommand("fonoquiz", function(player)
+fonoRegistrarComando("fonoquiz", function(player)
     iniciarSesion()
+    sesion.total_esperado = #quizFono.preguntas
+    sesion.reporte_auto_mostrado = false
     quizFono.activo = true
     quizFono.indice = 1
 
@@ -502,9 +558,11 @@ COM_AddCommand("fonoayuda2", function(player)
     mostrarInstruccionesFonoKids(player)
 end)
 
-COM_AddCommand("fonokids", function(player)
+fonoRegistrarComando("fonokids", function(player)
     mostrarInstruccionesFonoKids(player)
     iniciarSesion()
+    sesion.total_esperado = #quizFono.preguntas
+    sesion.reporte_auto_mostrado = false
     quizFono.activo = true
     quizFono.indice = 1
 
@@ -538,7 +596,7 @@ mobjinfo[MT_FONO_MURO] = {
 local objetosFono = {}
 
 local function crearObjetoFono(player, palabra, indice)
-    if player == nil or player.mo == nil then
+    if player == nil or player.mo == nil or player.mo.valid == false then
         CONS_Printf(player, "No se pudo crear el objeto: jugador no valido.")
         return
     end
@@ -572,15 +630,19 @@ local function crearObjetoFono(player, palabra, indice)
     end
 
     objeto.fono_palabra = clave
-    objeto.fuse = TICRATE * 60
     objetosFono[objeto] = clave
+    fonoAplicarSpritePalabra(objeto, clave)
+    fonoSetHud(player, "OBJETO: " .. string.upper(clave),
+        "OBJETIVO: " .. tostring(objetivoActual), TICRATE * 8)
 
     CONS_Printf(player, "Objeto educativo creado: " .. clave)
     return objeto
 end
 
 local function procesarObjetoFono(special, toucher)
-    if toucher == nil or toucher.player == nil then
+    if special == nil or special.valid == false
+    or special.fono_consumido == true
+    or toucher == nil or toucher.player == nil then
         return true
     end
 
@@ -602,15 +664,15 @@ local function procesarObjetoFono(special, toucher)
         return true
     end
 
+    -- Marcar antes del registro: el avance puede retirar ambas tarjetas.
+    special.fono_consumido = true
+    objetosFono[special] = nil
+
     if dato.correcto == true then
         registrarCorrecto(player, dato.texto)
-        -- Feedback detallado manejado por registrarCorrecto.
     else
         registrarError(player, dato.texto, dato.tipo)
-        -- Feedback detallado manejado por registrarError.
     end
-
-    objetosFono[special] = nil
 
     if special.valid then
         P_RemoveMobj(special)
@@ -621,11 +683,17 @@ end
 
 addHook("TouchSpecial", procesarObjetoFono, MT_FONO_OBJETO)
 
+-- Tambien liberar referencias cuando el motor retire un objeto.
+addHook("MobjRemoved", function(objeto)
+    objetosFono[objeto] = nil
+end, MT_FONO_OBJETO)
+
 COM_AddCommand("fonoobj", function(player, palabra)
     crearObjetoFono(player, palabra, 4)
 end)
 
-COM_AddCommand("fonoobjetosdemo", function(player)
+fonoRegistrarComando("fonoobjetosdemo", function(player)
+    iniciarSesion()
     crearObjetoFono(player, "mano", 0)
     crearObjetoFono(player, "mapa", 1)
     crearObjetoFono(player, "pato", 2)
@@ -638,7 +706,7 @@ end)
 -- Nivel educativo 1: silaba MA
 -- ================================
 
-COM_AddCommand("fononivel1", function(player)
+fonoRegistrarComando("fononivel1", function(player)
     if fonoLimpiarObjetosActivos ~= nil then
         fonoLimpiarObjetosActivos(player)
     end
@@ -683,6 +751,7 @@ local function revisarCierreActividad(player)
 
     if sesion.intentos >= sesion.total_esperado then
         sesion.completado = true
+        sesion.tiempo_fin = leveltime
         sesion.reporte_auto_mostrado = true
 
         CONS_Printf(player, "Actividad finalizada automaticamente.")
@@ -692,7 +761,7 @@ local function revisarCierreActividad(player)
     end
 end
 
-COM_AddCommand("fononivel1auto", function(player)
+fonoRegistrarComando("fononivel1auto", function(player)
     if fonoLimpiarObjetosActivos ~= nil then
         fonoLimpiarObjetosActivos(player)
     end
@@ -784,13 +853,14 @@ local function crearSiguienteObjetoSecuencial(player)
     crearObjetoFono(player, palabra, 4)
 end
 
-COM_AddCommand("fononivel1seq", function(player)
+fonoRegistrarComando("fononivel1seq", function(player)
     if fonoLimpiarObjetosActivos ~= nil then
         fonoLimpiarObjetosActivos(player)
     end
 
     iniciarSesion()
 
+    nivelSecuencial.palabras = { "mano", "mapa", "pato", "bala" }
     sesion.total_esperado = 4
     sesion.reporte_auto_mostrado = false
 
@@ -812,7 +882,7 @@ end)
 -- HUD VISUAL FONOKIDS
 -- ================================
 
-local function fonoSetHud(player, linea1, linea2, tiempo)
+fonoSetHud = function(player, linea1, linea2, tiempo)
     if player == nil then
         return
     end
@@ -820,17 +890,6 @@ local function fonoSetHud(player, linea1, linea2, tiempo)
     player.fono_hud_linea1 = tostring(linea1 or "")
     player.fono_hud_linea2 = tostring(linea2 or "")
     player.fono_hud_timer = tiempo or TICRATE * 5
-end
-
-local crearObjetoFonoHudBase = crearObjetoFono
-
-crearObjetoFono = function(player, palabra, indice)
-    local textoPalabra = string.upper(tostring(palabra or ""))
-    local textoObjetivo = "OBJETIVO: " .. tostring(objetivoActual)
-
-    fonoSetHud(player, "OBJETO: " .. textoPalabra, textoObjetivo, TICRATE * 8)
-
-    return crearObjetoFonoHudBase(player, palabra, indice)
 end
 
 addHook("ThinkFrame", function()
@@ -979,7 +1038,7 @@ local function fonoEsSilabaCercana(silaba)
     return false
 end
 
-local function fonoConfigurarBancoPorSilaba(silabaObjetivo)
+fonoConfigurarBancoPorSilaba = function(silabaObjetivo)
     objetivoActual = silabaObjetivo
 
     for clave, dato in pairs(bancoPalabras) do
@@ -1026,7 +1085,7 @@ local function fonoIniciarNivelSilaba(player, silabaObjetivo, palabrasNivel, nom
     crearSiguienteObjetoSecuencial(player)
 end
 
-COM_AddCommand("fonoma", function(player)
+fonoRegistrarComando("fonoma", function(player)
     fonoIniciarNivelSilaba(player, "MA", {
         "mano",
         "mapa",
@@ -1035,7 +1094,7 @@ COM_AddCommand("fonoma", function(player)
     }, "NIVEL MA: Bosque de la silaba MA")
 end)
 
-COM_AddCommand("fonopa", function(player)
+fonoRegistrarComando("fonopa", function(player)
     fonoIniciarNivelSilaba(player, "PA", {
         "pato",
         "pala",
@@ -1044,7 +1103,7 @@ COM_AddCommand("fonopa", function(player)
     }, "NIVEL PA: Camino de la silaba PA")
 end)
 
-COM_AddCommand("fonoba", function(player)
+fonoRegistrarComando("fonoba", function(player)
     fonoIniciarNivelSilaba(player, "BA", {
         "bala",
         "barco",
@@ -1078,6 +1137,9 @@ local function fonoJSONSeguro(valor)
     texto = string.gsub(texto, "\\", "\\\\")
     texto = string.gsub(texto, '"', '\\"')
 
+    texto = string.gsub(texto, "[%z\1-\31]", function(caracter)
+        return string.format("\\u%04x", string.byte(caracter))
+    end)
     return texto
 end
 
@@ -1115,6 +1177,21 @@ local function fonoMostrarJSON(player)
         end
     end
 
+    CONS_Printf(player, "  ],")
+    CONS_Printf(player, '  "pares_detalle": [')
+    local detalles = sesion.pares_detalle or {}
+    for i = 1, #detalles do
+        local detalle = detalles[i]
+        local coma = ","
+        if i == #detalles then coma = "" end
+        CONS_Printf(player, '    { "numero": ' .. tostring(detalle.numero)
+            .. ', "izquierda": "' .. fonoJSONSeguro(detalle.izquierda)
+            .. '", "derecha": "' .. fonoJSONSeguro(detalle.derecha)
+            .. '", "seleccion": "' .. fonoJSONSeguro(detalle.seleccion)
+            .. '", "esperado": "' .. fonoJSONSeguro(detalle.esperado)
+            .. '", "resultado": "' .. fonoJSONSeguro(detalle.resultado)
+            .. '", "tipo": "' .. fonoJSONSeguro(detalle.tipo) .. '" }' .. coma)
+    end
     CONS_Printf(player, "  ],")
     CONS_Printf(player, '  "producciones_orales": [')
 
@@ -1233,7 +1310,7 @@ end
 
 local crearSiguienteObjetoVocabulario
 
-COM_AddCommand("fonovocab", function(player)
+fonoRegistrarComando("fonovocab", function(player)
     if fonoLimpiarObjetosActivos ~= nil then
         fonoLimpiarObjetosActivos(player)
     end
@@ -1244,12 +1321,13 @@ COM_AddCommand("fonovocab", function(player)
 
     sesion.actividad = "vocabulario_categoria_animales"
     sesion.objetivo = "ANIMALES"
-    sesion.total_esperado = #vocabSecuencial.palabras
+    sesion.total_esperado = 6
     sesion.reporte_auto_mostrado = false
 
     vocabSecuencial.activo = true
     vocabSecuencial.indice = 1
     vocabSecuencial.categoriaObjetivo = "animal"
+    vocabSecuencial.palabras = { "pato", "gato", "perro", "mesa", "auto", "sopa" }
 
     if nivelSecuencial ~= nil then
         nivelSecuencial.activo = false
@@ -1298,140 +1376,82 @@ local function fonoEsActividadVocabulario()
     return false
 end
 
-registrarCorrecto = function(player, palabra)
-    if fonoPares ~= nil
-    and fonoPares.activo == true
-    and fonoPares.esperandoEvaluacion == true then
-        CONS_Printf(player, "Primero registra la produccion oral pendiente.")
-        return
-    end
-
-    local palabraProduccion = palabra
-
-    if fonoRegistrarDetallePar ~= nil then
-        local palabraEsperada = fonoRegistrarDetallePar("correcto", palabra, "")
-
-        if palabraEsperada ~= nil and palabraEsperada ~= "desconocida" then
-            palabraProduccion = palabraEsperada
-        end
-    end
-
-    if fonoEncolarProduccion ~= nil then
-        fonoEncolarProduccion(palabraProduccion)
-    end
-
+local function fonoRegistrarRespuesta(player, palabra, esCorrecta, tipo)
+    -- Validar antes de modificar detalles o la cola de produccion oral.
     if sesion.completado == true then
         return
     end
-
-    sesion.intentos = (sesion.intentos or 0) + 1
-    sesion.correctos = (sesion.correctos or 0) + 1
-
-    local p = string.upper(tostring(palabra or ""))
-
-    if fonoEsActividadVocabulario() == true then
-        CONS_Printf(player, "¡Muy bien! " .. p .. " pertenece a la categoria " .. tostring(sesion.objetivo) .. ".")
-        CONS_Printf(player, "¡Sigue asi!")
-
-        if fonoSetHud ~= nil then
-            fonoSetHud(player, "MUY BIEN: " .. p, "ES DE " .. tostring(sesion.objetivo), TICRATE * 4)
+    local actividadPares = fonoEsActividadPares() == true
+    if actividadPares == true then
+        if fonoPares.activo ~= true then return end
+        if fonoPares.esperandoEvaluacion == true then
+            CONS_Printf(player, "Primero registra la produccion oral pendiente.")
+            return
         end
+        if fonoPares.esperandoSiguiente == true then
+            CONS_Printf(player, "Espera a que aparezca el siguiente par.")
+            return
+        end
+    end
+
+    local resultado = "error"
+    if esCorrecta == true then resultado = "correcto" end
+    local palabraProduccion = fonoRegistrarDetallePar(resultado, palabra, tipo)
+    if palabraProduccion == nil or palabraProduccion == "desconocida" then
+        palabraProduccion = palabra
+    end
+    fonoEncolarProduccion(palabraProduccion)
+
+    sesion.intentos = sesion.intentos + 1
+    if esCorrecta == true then
+        sesion.correctos = sesion.correctos + 1
     else
-        fonoMostrarFeedbackCorrecto(player, palabra)
+        sesion.errores = sesion.errores + 1
+        table.insert(sesion.errores_detalle, { palabra = palabra, tipo = tipo })
     end
-
-    if sesion.total_esperado == nil and sesion.correctos >= 5 then
-        sesion.completado = true
-        CONS_Printf(player, "Actividad completada. Escribe fonoreporte para ver el reporte.")
-    end
-
-    local actividadPares = fonoEsActividadPares ~= nil and fonoEsActividadPares() == true
-
-    if actividadPares == false and revisarCierreActividad ~= nil then
-        revisarCierreActividad(player)
-    end
-
-    if nivelSecuencial ~= nil and nivelSecuencial.activo == true and sesion.completado ~= true then
-        nivelSecuencial.indice = nivelSecuencial.indice + 1
-        crearSiguienteObjetoSecuencial(player)
-    end
-
-    if vocabSecuencial ~= nil and vocabSecuencial.activo == true and sesion.completado ~= true then
-        vocabSecuencial.indice = vocabSecuencial.indice + 1
-        crearSiguienteObjetoVocabulario(player)
-    end
-
-    if actividadPares == true and fonoPrepararEvaluacionPar ~= nil then
-        fonoPrepararEvaluacionPar(player, palabraProduccion)
-    end
-end
-
-registrarError = function(player, palabra, tipo)
-    if fonoPares ~= nil
-    and fonoPares.activo == true
-    and fonoPares.esperandoEvaluacion == true then
-        CONS_Printf(player, "Primero registra la produccion oral pendiente.")
-        return
-    end
-
-    local palabraProduccion = palabra
-
-    if fonoRegistrarDetallePar ~= nil then
-        local palabraEsperada = fonoRegistrarDetallePar("error", palabra, tipo)
-
-        if palabraEsperada ~= nil and palabraEsperada ~= "desconocida" then
-            palabraProduccion = palabraEsperada
-        end
-    end
-
-    if fonoEncolarProduccion ~= nil then
-        fonoEncolarProduccion(palabraProduccion)
-    end
-
-    if sesion.completado == true then
-        return
-    end
-
-    sesion.intentos = (sesion.intentos or 0) + 1
-    sesion.errores = (sesion.errores or 0) + 1
-
-    table.insert(sesion.errores_detalle, {
-        palabra = palabra,
-        tipo = tipo
-    })
 
     local p = string.upper(tostring(palabra or ""))
-
     if fonoEsActividadVocabulario() == true then
-        CONS_Printf(player, "Buen intento. " .. p .. " no pertenece a la categoria " .. tostring(sesion.objetivo) .. ".")
-        CONS_Printf(player, "Busquemos palabras que sean " .. tostring(sesion.objetivo) .. ".")
-
-        if fonoSetHud ~= nil then
+        if esCorrecta == true then
+            CONS_Printf(player, "¡Muy bien! " .. p .. " pertenece a la categoria " .. tostring(sesion.objetivo) .. ".")
+            CONS_Printf(player, "¡Sigue asi!")
+            fonoSetHud(player, "MUY BIEN: " .. p, "ES DE " .. tostring(sesion.objetivo), TICRATE * 4)
+        else
+            CONS_Printf(player, "Buen intento. " .. p .. " no pertenece a la categoria " .. tostring(sesion.objetivo) .. ".")
+            CONS_Printf(player, "Busquemos palabras que sean " .. tostring(sesion.objetivo) .. ".")
             fonoSetHud(player, "BUEN INTENTO: " .. p, "NO ES DE " .. tostring(sesion.objetivo), TICRATE * 4)
         end
+    elseif esCorrecta == true then
+        fonoMostrarFeedbackCorrecto(player, palabra)
     else
         fonoMostrarFeedbackError(player, palabra)
     end
 
-    local actividadPares = fonoEsActividadPares ~= nil and fonoEsActividadPares() == true
-
-    if actividadPares == false and revisarCierreActividad ~= nil then
-        revisarCierreActividad(player)
+    if sesion.total_esperado == nil and sesion.correctos >= 5 then
+        sesion.completado = true
+        sesion.tiempo_fin = leveltime
+        CONS_Printf(player, "Actividad completada. Escribe fonoreporte para ver el reporte.")
     end
-
-    if nivelSecuencial ~= nil and nivelSecuencial.activo == true and sesion.completado ~= true then
+    if actividadPares == false then revisarCierreActividad(player) end
+    if nivelSecuencial.activo == true and sesion.completado ~= true then
         nivelSecuencial.indice = nivelSecuencial.indice + 1
         crearSiguienteObjetoSecuencial(player)
     end
-
-    if vocabSecuencial ~= nil and vocabSecuencial.activo == true and sesion.completado ~= true then
+    if vocabSecuencial.activo == true and sesion.completado ~= true then
         vocabSecuencial.indice = vocabSecuencial.indice + 1
         crearSiguienteObjetoVocabulario(player)
     end
-
-    if actividadPares == true and fonoPrepararEvaluacionPar ~= nil then
+    if actividadPares == true then
         fonoPrepararEvaluacionPar(player, palabraProduccion)
     end
+end
+
+registrarCorrecto = function(player, palabra)
+    fonoRegistrarRespuesta(player, palabra, true, "")
+end
+
+registrarError = function(player, palabra, tipo)
+    fonoRegistrarRespuesta(player, palabra, false, tipo or "distractor_fonologico")
 end
 
 
@@ -1574,7 +1594,7 @@ local function fonoIniciarVocabCategoria(player, categoria, palabras, nombreNive
     crearSiguienteObjetoVocabulario(player)
 end
 
-COM_AddCommand("fonocomida", function(player)
+fonoRegistrarComando("fonocomida", function(player)
     fonoIniciarVocabCategoria(player, "comida", {
         "pan",
         "queso",
@@ -1585,7 +1605,7 @@ COM_AddCommand("fonocomida", function(player)
     }, "NIVEL VOCABULARIO: Comidas")
 end)
 
-COM_AddCommand("fonotransporte", function(player)
+fonoRegistrarComando("fonotransporte", function(player)
     fonoIniciarVocabCategoria(player, "transporte", {
         "auto",
         "bus",
@@ -1609,7 +1629,7 @@ end)
 -- Demo presentable Sonic FonoKids
 -- ================================
 
-COM_AddCommand("fonodemo", function(player)
+fonoRegistrarComando("fonodemo", function(player)
     CONS_Printf(player, "========== SONIC FONOKIDS ==========")
     CONS_Printf(player, "DEMO GENERAL DEL PROYECTO")
     CONS_Printf(player, " ")
@@ -1656,7 +1676,7 @@ COM_AddCommand("fonodemo", function(player)
     end
 end)
 
-COM_AddCommand("fonodemoma", function(player)
+fonoRegistrarComando("fonodemoma", function(player)
     CONS_Printf(player, "Iniciando demo de conciencia fonologica: silaba MA.")
     CONS_Printf(player, "Toca los objetos que aparecen.")
     CONS_Printf(player, "Al finalizar se mostrara el reporte automaticamente.")
@@ -1669,7 +1689,7 @@ COM_AddCommand("fonodemoma", function(player)
     }, "DEMO: Conciencia fonologica - silaba MA")
 end)
 
-COM_AddCommand("fonodemovocab", function(player)
+fonoRegistrarComando("fonodemovocab", function(player)
     CONS_Printf(player, "Iniciando demo de vocabulario: categoria ANIMALES.")
     CONS_Printf(player, "Toca los objetos que aparecen.")
     CONS_Printf(player, "Al finalizar se mostrara el reporte automaticamente.")
@@ -1733,6 +1753,10 @@ end)
 -- ================================
 
 fonoLimpiarObjetosActivos = function(player)
+    if fonoPares ~= nil then
+        fonoPares.activo = false
+        fonoLimpiarObjetosPares()
+    end
     if objetosFono ~= nil then
         for objeto, _ in pairs(objetosFono) do
             if objeto ~= nil and objeto.valid then
@@ -1765,6 +1789,38 @@ end
 -- Modo de eleccion entre 2 opciones
 -- ================================
 
+local fonoDefinicionesPares = {
+    MA = {
+        { izquierda = "mano", derecha = "pato" },
+        { izquierda = "bala", derecha = "mapa" },
+    },
+    PA = {
+        { izquierda = "pato", derecha = "mano" },
+        { izquierda = "mapa", derecha = "pala" },
+        { izquierda = "papa", derecha = "bala" },
+    },
+    BA = {
+        { izquierda = "bala", derecha = "pato" },
+        { izquierda = "mano", derecha = "barco" },
+        { izquierda = "banco", derecha = "mapa" },
+    },
+    animal = {
+        { izquierda = "gato", derecha = "mesa" },
+        { izquierda = "auto", derecha = "perro" },
+        { izquierda = "pato", derecha = "sopa" },
+    },
+    comida = {
+        { izquierda = "pan", derecha = "bus" },
+        { izquierda = "perro", derecha = "queso" },
+        { izquierda = "manzana", derecha = "auto" },
+    },
+    transporte = {
+        { izquierda = "auto", derecha = "sopa" },
+        { izquierda = "mesa", derecha = "bus" },
+        { izquierda = "tren", derecha = "gato" },
+    },
+}
+
 local fonoProgramarSiguientePar
 local crearSiguienteParFono
 
@@ -1779,10 +1835,9 @@ fonoPares = {
     playerEspera = nil,
     esperandoEvaluacion = false,
     palabraObjetivo = nil,
-    playerEvaluacion = nil
 }
 
-local function fonoLimpiarObjetosPares()
+fonoLimpiarObjetosPares = function()
     if fonoPares.objetos ~= nil then
         for i = 1, #fonoPares.objetos do
             local objeto = fonoPares.objetos[i]
@@ -1805,21 +1860,6 @@ local function fonoLimpiarObjetosPares()
     fonoPares.playerEspera = nil
     fonoPares.esperandoEvaluacion = false
     fonoPares.palabraObjetivo = nil
-    fonoPares.playerEvaluacion = nil
-end
-
--- Extendemos la limpieza general para que tambien corte el modo de pares.
-local fonoLimpiarObjetosActivosBasePares = fonoLimpiarObjetosActivos
-
-fonoLimpiarObjetosActivos = function(player)
-    if fonoPares ~= nil then
-        fonoPares.activo = false
-        fonoLimpiarObjetosPares()
-    end
-
-    if fonoLimpiarObjetosActivosBasePares ~= nil then
-        fonoLimpiarObjetosActivosBasePares(player)
-    end
 end
 
 local function crearObjetoFonoPar(player, palabra, lado)
@@ -1870,7 +1910,8 @@ local function crearObjetoFonoPar(player, palabra, lado)
     local objeto = P_SpawnMobj(x, y, z, MT_FONO_OBJETO)
 
     if objeto ~= nil then
-        objeto.scale = FRACUNIT * 3 / 2
+        objeto.fono_palabra = palabra
+        fonoAplicarSpritePalabra(objeto, palabra)
 
         if objetosFono ~= nil then
             objetosFono[objeto] = palabra
@@ -1883,59 +1924,56 @@ local function crearObjetoFonoPar(player, palabra, lado)
     return objeto
 end
 
-local function fonoIniciarParesMA(player)
-    if fonoLimpiarObjetosActivos ~= nil then
-        fonoLimpiarObjetosActivos(player)
+-- Un solo inicio para silabas y categorias; limpia tambien las esperas.
+local function fonoIniciarPares(player, modo, objetivo, pares, nombreNivel)
+    fonoLimpiarObjetosActivos(player)
+    local textoObjetivo = objetivo
+    local instruccion
+    if modo == "categoria" then
+        fonoConfigurarBancoPorCategoria(objetivo)
+        textoObjetivo = fonoNombreCategoriaBonito(objetivo)
+        instruccion = "Escoger la palabra que pertenece a " .. textoObjetivo .. "."
+    else
+        fonoConfigurarBancoPorSilaba(objetivo)
+        instruccion = "Escoger la palabra que empieza con " .. objetivo .. "."
     end
-
-    fonoConfigurarBancoPorSilaba("MA")
     iniciarSesion()
-
-    sesion.actividad = "eleccion_pares_silaba_MA"
-    sesion.objetivo = "MA"
-    sesion.total_esperado = 2
+    local prefijo = "eleccion_pares_silaba_"
+    if modo == "categoria" then prefijo = "eleccion_pares_vocabulario_" end
+    sesion.actividad = prefijo .. objetivo
+    sesion.objetivo = textoObjetivo
+    sesion.total_esperado = #pares
     sesion.reporte_auto_mostrado = false
-
-    if nivelSecuencial ~= nil then
-        nivelSecuencial.activo = false
-    end
-
-    if vocabSecuencial ~= nil then
-        vocabSecuencial.activo = false
-    end
 
     fonoPares.activo = true
     fonoPares.indice = 1
-    fonoPares.objetivo = "MA"
-    fonoPares.modo = "silaba"
+    fonoPares.modo = modo
+    fonoPares.objetivo = textoObjetivo
     fonoPares.categoriaObjetivo = nil
-
-    -- Par 1: correcta a la izquierda.
-    -- Par 2: correcta a la derecha.
-    -- Asi evitamos que el niño aprenda "siempre tocar el mismo lado".
-    fonoPares.pares = {
-        {
-            izquierda = "mano",
-            derecha = "pato"
-        },
-        {
-            izquierda = "bala",
-            derecha = "mapa"
-        }
-    }
+    if modo == "categoria" then fonoPares.categoriaObjetivo = objetivo end
+    fonoPares.pares = pares
 
     CONS_Printf(player, "========== SONIC FONOKIDS ==========")
-    CONS_Printf(player, "MODO ELECCION ENTRE 2 OPCIONES")
-    CONS_Printf(player, "Objetivo educativo:")
-    CONS_Printf(player, "Escoger la palabra que empieza con MA.")
-    CONS_Printf(player, " ")
-    CONS_Printf(player, "Apareceran dos opciones al mismo tiempo.")
-    CONS_Printf(player, "El nino debe tocar solo una.")
+    CONS_Printf(player, nombreNivel)
+    CONS_Printf(player, "Objetivo educativo: " .. instruccion)
+    CONS_Printf(player, "Apareceran dos opciones al mismo tiempo. Toca solo una.")
     CONS_Printf(player, "Despues de elegir, registra la produccion oral con 1-5.")
     CONS_Printf(player, "El reporte aparece tras evaluar la ultima palabra.")
     CONS_Printf(player, "====================================")
-
     crearSiguienteParFono(player)
+end
+
+local function fonoIniciarParesSilaba(player, objetivo, pares, nombreNivel)
+    fonoIniciarPares(player, "silaba", objetivo, pares, nombreNivel)
+end
+
+local function fonoIniciarParesCategoria(player, objetivo, pares, nombreNivel)
+    fonoIniciarPares(player, "categoria", objetivo, pares, nombreNivel)
+end
+
+local function fonoIniciarParesMA(player)
+    fonoIniciarParesSilaba(player, "MA", fonoDefinicionesPares.MA,
+        "MODO PARES: Silaba inicial MA")
 end
 
 fonoPrepararEvaluacionPar = function(player, palabraObjetivo)
@@ -1951,7 +1989,6 @@ fonoPrepararEvaluacionPar = function(player, palabraObjetivo)
 
     fonoPares.esperandoEvaluacion = true
     fonoPares.palabraObjetivo = tostring(palabraObjetivo or "")
-    fonoPares.playerEvaluacion = player
 
     CONS_Printf(player, "Produccion pendiente: " .. string.upper(fonoPares.palabraObjetivo))
     CONS_Printf(player, "Evaluadora: presiona 1-5 o usa fonoproduccion <1-5>.")
@@ -1982,15 +2019,15 @@ fonoAvanzarPares = function(player)
     fonoProgramarSiguientePar(player)
 end
 
-COM_AddCommand("fonoma2", function(player)
+fonoRegistrarComando("fonoma2", function(player)
     fonoIniciarParesMA(player)
 end)
 
-COM_AddCommand("fonoparesma", function(player)
+fonoRegistrarComando("fonoparesma", function(player)
     fonoIniciarParesMA(player)
 end)
 
-COM_AddCommand("fonodemopares", function(player)
+fonoRegistrarComando("fonodemopares", function(player)
     CONS_Printf(player, "Iniciando demo de eleccion entre 2 opciones.")
     CONS_Printf(player, "Actividad: silaba inicial MA.")
     fonoIniciarParesMA(player)
@@ -2070,118 +2107,22 @@ crearSiguienteParFono = function(player)
     crearObjetoFonoPar(player, derecha, -1)
 end
 
-local function fonoIniciarParesCategoria(player, categoria, pares, nombreNivel)
-    if fonoLimpiarObjetosActivos ~= nil then
-        fonoLimpiarObjetosActivos(player)
-    end
-
-    fonoConfigurarBancoPorCategoria(categoria)
-    iniciarSesion()
-
-    local categoriaBonita = fonoNombreCategoriaBonito(categoria)
-
-    sesion.actividad = "eleccion_pares_vocabulario_" .. tostring(categoria)
-    sesion.objetivo = categoriaBonita
-    sesion.total_esperado = #pares
-    sesion.reporte_auto_mostrado = false
-
-    if nivelSecuencial ~= nil then
-        nivelSecuencial.activo = false
-    end
-
-    if vocabSecuencial ~= nil then
-        vocabSecuencial.activo = false
-    end
-
-    fonoPares.activo = true
-    fonoPares.indice = 1
-    fonoPares.modo = "categoria"
-    fonoPares.objetivo = categoriaBonita
-    fonoPares.categoriaObjetivo = categoria
-    fonoPares.pares = pares
-
-    CONS_Printf(player, "========== SONIC FONOKIDS ==========")
-    CONS_Printf(player, nombreNivel)
-    CONS_Printf(player, "Objetivo educativo:")
-    CONS_Printf(player, "Escoger la palabra que pertenece a " .. categoriaBonita .. ".")
-    CONS_Printf(player, " ")
-    CONS_Printf(player, "Apareceran dos opciones al mismo tiempo.")
-    CONS_Printf(player, "El nino debe tocar solo una.")
-    CONS_Printf(player, "Despues de elegir, registra la produccion oral con 1-5.")
-    CONS_Printf(player, "El reporte aparece tras evaluar la ultima palabra.")
-    CONS_Printf(player, "====================================")
-
-    crearSiguienteParFono(player)
-end
-
-COM_AddCommand("fonovocab2", function(player)
-    fonoIniciarParesCategoria(player, "animal", {
-        {
-            izquierda = "gato",
-            derecha = "mesa"
-        },
-        {
-            izquierda = "auto",
-            derecha = "perro"
-        },
-        {
-            izquierda = "pato",
-            derecha = "sopa"
-        }
-    }, "MODO PARES: Categoria ANIMALES")
+fonoRegistrarComando("fonovocab2", function(player)
+    fonoIniciarParesCategoria(player, "animal", fonoDefinicionesPares.animal, "MODO PARES: Categoria ANIMALES")
 end)
 
-COM_AddCommand("fonocomida2", function(player)
-    fonoIniciarParesCategoria(player, "comida", {
-        {
-            izquierda = "pan",
-            derecha = "bus"
-        },
-        {
-            izquierda = "perro",
-            derecha = "queso"
-        },
-        {
-            izquierda = "manzana",
-            derecha = "auto"
-        }
-    }, "MODO PARES: Categoria COMIDAS")
+fonoRegistrarComando("fonocomida2", function(player)
+    fonoIniciarParesCategoria(player, "comida", fonoDefinicionesPares.comida, "MODO PARES: Categoria COMIDAS")
 end)
 
-COM_AddCommand("fonotransporte2", function(player)
-    fonoIniciarParesCategoria(player, "transporte", {
-        {
-            izquierda = "auto",
-            derecha = "sopa"
-        },
-        {
-            izquierda = "mesa",
-            derecha = "bus"
-        },
-        {
-            izquierda = "tren",
-            derecha = "gato"
-        }
-    }, "MODO PARES: Categoria TRANSPORTES")
+fonoRegistrarComando("fonotransporte2", function(player)
+    fonoIniciarParesCategoria(player, "transporte", fonoDefinicionesPares.transporte, "MODO PARES: Categoria TRANSPORTES")
 end)
 
-COM_AddCommand("fonodemovocab2", function(player)
+fonoRegistrarComando("fonodemovocab2", function(player)
     CONS_Printf(player, "Iniciando demo de eleccion entre 2 opciones.")
     CONS_Printf(player, "Actividad: categoria ANIMALES.")
-    fonoIniciarParesCategoria(player, "animal", {
-        {
-            izquierda = "gato",
-            derecha = "mesa"
-        },
-        {
-            izquierda = "auto",
-            derecha = "perro"
-        },
-        {
-            izquierda = "pato",
-            derecha = "sopa"
-        }
-    }, "DEMO PARES: Vocabulario - ANIMALES")
+    fonoIniciarParesCategoria(player, "animal", fonoDefinicionesPares.animal, "DEMO PARES: Vocabulario - ANIMALES")
 end)
 
 COM_AddCommand("fonoparesvocab", function(player)
@@ -2234,8 +2175,7 @@ addHook("ThinkFrame", function()
         return
     end
 
-    fonoPares.esperandoSiguiente = false
-
+    -- Mantener el pendiente si el jugador murio o aun no reaparece.
     local player = fonoPares.playerEspera
 
     if player == nil then
@@ -2246,6 +2186,7 @@ addHook("ThinkFrame", function()
         return
     end
 
+    fonoPares.esperandoSiguiente = false
     crearSiguienteParFono(player)
 end)
 
@@ -2255,120 +2196,26 @@ end)
 -- Pares fonologicos PA y BA
 -- ================================
 
-local function fonoIniciarParesSilaba(player, silabaObjetivo, pares, nombreNivel)
-    if fonoLimpiarObjetosActivos ~= nil then
-        fonoLimpiarObjetosActivos(player)
-    end
-
-    fonoConfigurarBancoPorSilaba(silabaObjetivo)
-    iniciarSesion()
-
-    sesion.actividad = "eleccion_pares_silaba_" .. tostring(silabaObjetivo)
-    sesion.objetivo = silabaObjetivo
-    sesion.total_esperado = #pares
-    sesion.reporte_auto_mostrado = false
-
-    if nivelSecuencial ~= nil then
-        nivelSecuencial.activo = false
-    end
-
-    if vocabSecuencial ~= nil then
-        vocabSecuencial.activo = false
-    end
-
-    fonoPares.activo = true
-    fonoPares.indice = 1
-    fonoPares.modo = "silaba"
-    fonoPares.objetivo = silabaObjetivo
-    fonoPares.categoriaObjetivo = nil
-    fonoPares.pares = pares
-
-    CONS_Printf(player, "========== SONIC FONOKIDS ==========")
-    CONS_Printf(player, nombreNivel)
-    CONS_Printf(player, "Objetivo educativo:")
-    CONS_Printf(player, "Escoger la palabra que empieza con " .. tostring(silabaObjetivo) .. ".")
-    CONS_Printf(player, " ")
-    CONS_Printf(player, "Apareceran dos opciones al mismo tiempo.")
-    CONS_Printf(player, "El nino debe tocar solo una.")
-    CONS_Printf(player, "Despues de elegir, registra la produccion oral con 1-5.")
-    CONS_Printf(player, "El reporte aparece tras evaluar la ultima palabra.")
-    CONS_Printf(player, "====================================")
-
-    crearSiguienteParFono(player)
-end
-
-COM_AddCommand("fonopa2", function(player)
-    fonoIniciarParesSilaba(player, "PA", {
-        {
-            izquierda = "pato",
-            derecha = "mano"
-        },
-        {
-            izquierda = "mapa",
-            derecha = "pala"
-        },
-        {
-            izquierda = "papa",
-            derecha = "bala"
-        }
-    }, "MODO PARES: Silaba inicial PA")
+fonoRegistrarComando("fonopa2", function(player)
+    fonoIniciarParesSilaba(player, "PA", fonoDefinicionesPares.PA, "MODO PARES: Silaba inicial PA")
 end)
 
-COM_AddCommand("fonoba2", function(player)
-    fonoIniciarParesSilaba(player, "BA", {
-        {
-            izquierda = "bala",
-            derecha = "pato"
-        },
-        {
-            izquierda = "mano",
-            derecha = "barco"
-        },
-        {
-            izquierda = "banco",
-            derecha = "mapa"
-        }
-    }, "MODO PARES: Silaba inicial BA")
+fonoRegistrarComando("fonoba2", function(player)
+    fonoIniciarParesSilaba(player, "BA", fonoDefinicionesPares.BA, "MODO PARES: Silaba inicial BA")
 end)
 
-COM_AddCommand("fonodemopa2", function(player)
+fonoRegistrarComando("fonodemopa2", function(player)
     CONS_Printf(player, "Iniciando demo de eleccion entre 2 opciones.")
     CONS_Printf(player, "Actividad: silaba inicial PA.")
 
-    fonoIniciarParesSilaba(player, "PA", {
-        {
-            izquierda = "pato",
-            derecha = "mano"
-        },
-        {
-            izquierda = "mapa",
-            derecha = "pala"
-        },
-        {
-            izquierda = "papa",
-            derecha = "bala"
-        }
-    }, "DEMO PARES: Silaba inicial PA")
+    fonoIniciarParesSilaba(player, "PA", fonoDefinicionesPares.PA, "DEMO PARES: Silaba inicial PA")
 end)
 
-COM_AddCommand("fonodemoba2", function(player)
+fonoRegistrarComando("fonodemoba2", function(player)
     CONS_Printf(player, "Iniciando demo de eleccion entre 2 opciones.")
     CONS_Printf(player, "Actividad: silaba inicial BA.")
 
-    fonoIniciarParesSilaba(player, "BA", {
-        {
-            izquierda = "bala",
-            derecha = "pato"
-        },
-        {
-            izquierda = "mano",
-            derecha = "barco"
-        },
-        {
-            izquierda = "banco",
-            derecha = "mapa"
-        }
-    }, "DEMO PARES: Silaba inicial BA")
+    fonoIniciarParesSilaba(player, "BA", fonoDefinicionesPares.BA, "DEMO PARES: Silaba inicial BA")
 end)
 
 COM_AddCommand("fonoparesniveles", function(player)
@@ -2482,15 +2329,7 @@ local function fonoPorcentajeSesion()
     return obtenerPorcentajeLogro()
 end
 
-local function fonoResultadoDescriptivoPares(porcentaje)
-    if porcentaje >= 80 then
-        return "desempeno alto dentro de la actividad"
-    elseif porcentaje >= 50 then
-        return "desempeno intermedio dentro de la actividad"
-    end
-
-    return "desempeno bajo dentro de la actividad"
-end
+local fonoResultadoDescriptivoPares = obtenerNivelDescriptivo
 
 local mostrarReporteDescriptivoBasePares = mostrarReporteDescriptivo
 
@@ -2588,9 +2427,6 @@ end)
 -- ================================
 
 COM_AddCommand("fonosala", function(player)
-    if fonoLimpiarObjetosActivos ~= nil then
-        fonoLimpiarObjetosActivos(player)
-    end
 
     CONS_Printf(player, "========== SALA SONIC FONOKIDS ==========")
     CONS_Printf(player, "Bienvenido a la sala guiada del proyecto.")
@@ -2626,7 +2462,7 @@ COM_AddCommand("fonosala", function(player)
     end
 end)
 
-COM_AddCommand("fonosala1", function(player)
+fonoRegistrarComando("fonosala1", function(player)
     CONS_Printf(player, "========== SALA 1: FONOLOGIA ==========")
     CONS_Printf(player, "Actividad:")
     CONS_Printf(player, "Escoger entre dos opciones la palabra que empieza con MA.")
@@ -2639,22 +2475,13 @@ COM_AddCommand("fonosala1", function(player)
     CONS_Printf(player, "=======================================")
 
     if fonoIniciarParesSilaba ~= nil then
-        fonoIniciarParesSilaba(player, "MA", {
-            {
-                izquierda = "mano",
-                derecha = "pato"
-            },
-            {
-                izquierda = "bala",
-                derecha = "mapa"
-            }
-        }, "SALA 1: Conciencia fonologica - silaba MA")
+        fonoIniciarParesSilaba(player, "MA", fonoDefinicionesPares.MA, "SALA 1: Conciencia fonologica - silaba MA")
     else
         CONS_Printf(player, "No se encontro el sistema de pares fonologicos.")
     end
 end)
 
-COM_AddCommand("fonosala2", function(player)
+fonoRegistrarComando("fonosala2", function(player)
     CONS_Printf(player, "========== SALA 2: VOCABULARIO ==========")
     CONS_Printf(player, "Actividad:")
     CONS_Printf(player, "Escoger entre dos opciones la palabra que pertenece")
@@ -2769,54 +2596,32 @@ local fonoSpriteFrames = {
 
 local fonoSpriteStates
 
-local function fonoAplicarSpritePalabra(objeto, palabra)
-    if objeto == nil then
-        return
+fonoAplicarSpritePalabra = function(objeto, palabra)
+    if objeto == nil or objeto.valid == false then return end
+    local estado = fonoSpriteStates[palabra]
+    local frame = fonoSpriteFrames[palabra]
+    if estado ~= nil and objeto.state ~= estado then
+        P_SetMobjStateNF(objeto, estado)
     end
-
-    if objeto.valid == false then
-        return
-    end
-
-    local clave = tostring(palabra)
-    local estado = nil
-    local frame = nil
-
-    if fonoSpriteStates ~= nil then
-        estado = fonoSpriteStates[clave]
-    end
-
-    if fonoSpriteFrames ~= nil then
-        frame = fonoSpriteFrames[clave]
-    end
-
-    if estado ~= nil then
-        objeto.state = estado
-    end
-
     if frame ~= nil then
         objeto.sprite = SPR_FONI
-        objeto.frame = frame
+        objeto.frame = frame|FF_FULLBRIGHT
     end
-
-    objeto.scale = FRACUNIT * 3 / 2
+    objeto.flags = (objeto.flags|MF_NOGRAVITY) & ~MF_NOSECTOR
+    objeto.flags2 = objeto.flags2 & ~MF2_DONTDRAW
+    objeto.alpha = FRACUNIT
+    objeto.blendmode = AST_COPY
+    objeto.dispoffset = 10
+    objeto.renderflags = RF_ABSOLUTEOFFSETS
+    objeto.spritexoffset = 48*FRACUNIT
+    objeto.spriteyoffset = 96*FRACUNIT
+    objeto.spritexscale = FRACUNIT
+    objeto.spriteyscale = FRACUNIT
+    objeto.scale = FRACUNIT*3/2
     objeto.tics = -1
-end
-
-local crearObjetoFonoBaseSprites = crearObjetoFono
-
-crearObjetoFono = function(player, palabra, indice)
-    local objeto = crearObjetoFonoBaseSprites(player, palabra, indice)
-    fonoAplicarSpritePalabra(objeto, palabra)
-    return objeto
-end
-
-local crearObjetoFonoParBaseSprites = crearObjetoFonoPar
-
-crearObjetoFonoPar = function(player, palabra, lado)
-    local objeto = crearObjetoFonoParBaseSprites(player, palabra, lado)
-    fonoAplicarSpritePalabra(objeto, palabra)
-    return objeto
+    objeto.fuse = 0
+    objeto.drawonlyforplayer = nil
+    objeto.dontdrawforviewmobj = nil
 end
 
 COM_AddCommand("fonosprites", function(player)
@@ -2859,24 +2664,6 @@ freeslot(
     "S_FONO_PAPA"
 )
 
-states[S_FONO_MANO]    = {sprite = SPR_FONI, frame = A,  tics = -1, nextstate = S_FONO_MANO}
-states[S_FONO_MAPA]    = {sprite = SPR_FONI, frame = B,  tics = -1, nextstate = S_FONO_MAPA}
-states[S_FONO_PATO]    = {sprite = SPR_FONI, frame = S,  tics = -1, nextstate = S_FONO_PATO}
-states[S_FONO_BALA]    = {sprite = SPR_FONI, frame = D,  tics = -1, nextstate = S_FONO_BALA}
-states[S_FONO_GATO]    = {sprite = SPR_FONI, frame = E,  tics = -1, nextstate = S_FONO_GATO}
-states[S_FONO_MESA]    = {sprite = SPR_FONI, frame = F,  tics = -1, nextstate = S_FONO_MESA}
-states[S_FONO_AUTO]    = {sprite = SPR_FONI, frame = G,  tics = -1, nextstate = S_FONO_AUTO}
-states[S_FONO_PERRO]   = {sprite = SPR_FONI, frame = H,  tics = -1, nextstate = S_FONO_PERRO}
-states[S_FONO_SOPA]    = {sprite = SPR_FONI, frame = I,  tics = -1, nextstate = S_FONO_SOPA}
-states[S_FONO_PAN]     = {sprite = SPR_FONI, frame = J,  tics = -1, nextstate = S_FONO_PAN}
-states[S_FONO_QUESO]   = {sprite = SPR_FONI, frame = K, tics = -1, nextstate = S_FONO_QUESO}
-states[S_FONO_MANZANA] = {sprite = SPR_FONI, frame = L, tics = -1, nextstate = S_FONO_MANZANA}
-states[S_FONO_BUS]     = {sprite = SPR_FONI, frame = T, tics = -1, nextstate = S_FONO_BUS}
-states[S_FONO_TREN]    = {sprite = SPR_FONI, frame = N, tics = -1, nextstate = S_FONO_TREN}
-states[S_FONO_BARCO]   = {sprite = SPR_FONI, frame = O, tics = -1, nextstate = S_FONO_BARCO}
-states[S_FONO_BANCO]   = {sprite = SPR_FONI, frame = P, tics = -1, nextstate = S_FONO_BANCO}
-states[S_FONO_PALA]    = {sprite = SPR_FONI, frame = Q, tics = -1, nextstate = S_FONO_PALA}
-states[S_FONO_PAPA]    = {sprite = SPR_FONI, frame = R, tics = -1, nextstate = S_FONO_PAPA}
 
 fonoSpriteStates = {
     mano = S_FONO_MANO,
@@ -2898,6 +2685,13 @@ fonoSpriteStates = {
     pala = S_FONO_PALA,
     papa = S_FONO_PAPA
 }
+
+for palabra, estado in pairs(fonoSpriteStates) do
+    states[estado] = {
+        sprite = SPR_FONI, frame = fonoSpriteFrames[palabra],
+        tics = -1, nextstate = estado
+    }
+end
 
 
 
@@ -2968,46 +2762,13 @@ addHook("MobjThinker", function(objeto)
         return
     end
 
-    local estado = nil
-    local frame = nil
-
-    if fonoSpriteStates ~= nil then
-        estado = fonoSpriteStates[palabra]
+    local estado = fonoSpriteStates[palabra]
+    local frame = fonoSpriteFrames[palabra]
+    if estado ~= nil and frame ~= nil
+    and (objeto.state ~= estado or objeto.sprite ~= SPR_FONI
+    or objeto.frame ~= (frame|FF_FULLBRIGHT)) then
+        fonoAplicarSpritePalabra(objeto, palabra)
     end
-
-    if fonoSpriteFrames ~= nil then
-        frame = fonoSpriteFrames[palabra]
-    end
-
-    if estado ~= nil and objeto.state ~= estado then
-        P_SetMobjStateNF(objeto, estado)
-    end
-
-    if frame ~= nil then
-        objeto.sprite = SPR_FONI
-        objeto.frame = frame|FF_FULLBRIGHT
-    end
-
-    -- Visibilidad completa.
-    objeto.flags = (objeto.flags|MF_NOGRAVITY) & ~MF_NOSECTOR
-    objeto.flags2 = objeto.flags2 & ~MF2_DONTDRAW
-    objeto.alpha = FRACUNIT
-    objeto.blendmode = AST_COPY
-    objeto.dispoffset = 10
-
-    -- Anclaje explícito para PNG de 96x96:
-    -- centro horizontal y base inferior del dibujo.
-    objeto.renderflags = RF_ABSOLUTEOFFSETS
-    objeto.spritexoffset = 48*FRACUNIT
-    objeto.spriteyoffset = 96*FRACUNIT
-    objeto.spritexscale = FRACUNIT
-    objeto.spriteyscale = FRACUNIT
-
-    objeto.scale = FRACUNIT*3/2
-    objeto.tics = -1
-    objeto.fuse = 0
-    objeto.drawonlyforplayer = nil
-    objeto.dontdrawforviewmobj = nil
 
     -- Evitar que quede debajo del terreno.
     local alturaSegura = objeto.floorz + 36*FRACUNIT
@@ -3023,22 +2784,6 @@ end, MT_FONO_OBJETO)
 -- ==========================================
 -- Esta capa no diagnostica. La evaluadora registra manualmente
 -- lo que escucha despues de cada palabra seleccionada en el juego.
-
-local fonoDatosParticipante = {
-    codigo = jugadorDemo,
-    edad = "no_registrada"
-}
-
-local iniciarSesionBaseEvaluacion = iniciarSesion
-
-iniciarSesion = function()
-    iniciarSesionBaseEvaluacion()
-
-    sesion.jugador = fonoDatosParticipante.codigo
-    sesion.edad = fonoDatosParticipante.edad
-    sesion.producciones_pendientes = {}
-    sesion.producciones_detalle = {}
-end
 
 local function fonoAsegurarProducciones()
     if sesion.producciones_pendientes == nil then
@@ -3147,11 +2892,9 @@ COM_AddCommand("fonosesion", function(player, codigo, edad)
         fonoDatosParticipante.edad = tostring(edad)
     end
 
+    fonoLimpiarObjetosActivos()
+    fonoReiniciarFlujo()
     iniciarSesion()
-
-    if fonoReiniciarFlujo ~= nil then
-        fonoReiniciarFlujo()
-    end
 
     CONS_Printf(player, "Sesion descriptiva preparada.")
     CONS_Printf(player, "Codigo anonimo: " .. tostring(sesion.jugador))
@@ -3206,7 +2949,6 @@ fonoRegistrarProduccion = function(player, codigo, nota)
     if actividadPares == true then
         fonoPares.esperandoEvaluacion = false
         fonoPares.palabraObjetivo = nil
-        fonoPares.playerEvaluacion = nil
 
         if player ~= nil then
             player.fono_hud_timer = 0
@@ -3312,6 +3054,23 @@ COM_AddCommand("fonoproducciondeshacer", function(player)
         return
     end
 
+    if fonoEsActividadPares() == true then
+        -- Solo retroceder antes de mostrar el siguiente par. Una etapa ya
+        -- guardada en la aventura no puede editarse desde esta cola local.
+        if fonoPares.activo ~= true or fonoPares.esperandoSiguiente ~= true then
+            CONS_Printf(player, "Solo puedes deshacer antes de que aparezca el siguiente par.")
+            return
+        end
+        fonoPares.indice = fonoPares.indice - 1
+        fonoPares.esperandoSiguiente = false
+        fonoPares.ticsEspera = 0
+        fonoPares.playerEspera = nil
+        fonoPares.esperandoEvaluacion = true
+        fonoPares.palabraObjetivo = sesion.producciones_detalle[#sesion.producciones_detalle].palabra
+        fonoSetHud(player, "PRODUCCION: " .. string.upper(fonoPares.palabraObjetivo),
+            "1-5 PARA REGISTRAR", TICRATE * 60)
+    end
+
     local produccion = table.remove(sesion.producciones_detalle)
     table.insert(sesion.producciones_pendientes, 1, produccion.palabra)
 
@@ -3364,17 +3123,13 @@ fonoFlujoSesion = {
     indiceActividad = 0,
     resultados = {},
     actividadCapturada = false,
-    ticsTransicion = 0,
-    playerTransicion = nil,
     duracionJuegoSegundos = 300,
     tiempoJuegoRestante = 0,
     avisoTreintaSegundos = false,
-    conservarSesion = false,
     mapaEducativo = 100,
     mapaJuego = 1,
     reporteFinalPendiente = false,
     reiniciarActividadesAlVolver = false,
-    salidaConfigurada = false,
     checkpointActual = 0,
     sectorAnterior = nil,
     posicionSegura = nil,
@@ -3539,6 +3294,7 @@ local function fonoMostrarResumenAventura(player)
     local totalCorrectos = 0
     local totalErrores = 0
     local totalProducciones = 0
+    local totalAyudas = 0
 
     CONS_Printf(player, "========== RESUMEN DE AVENTURA ==========")
     CONS_Printf(player, "Participante: " .. tostring(fonoDatosParticipante.codigo))
@@ -3552,6 +3308,7 @@ local function fonoMostrarResumenAventura(player)
         totalIntentos = totalIntentos + (resultado.intentos or 0)
         totalCorrectos = totalCorrectos + (resultado.correctos or 0)
         totalErrores = totalErrores + (resultado.errores or 0)
+        totalAyudas = totalAyudas + (resultado.ayudas or 0)
         totalProducciones = totalProducciones + #producciones
 
         CONS_Printf(player, "Actividad " .. tostring(i) .. ": " .. tostring(resultado.objetivo))
@@ -3565,6 +3322,7 @@ local function fonoMostrarResumenAventura(player)
     CONS_Printf(player, "  Intentos: " .. tostring(totalIntentos))
     CONS_Printf(player, "  Correctos: " .. tostring(totalCorrectos))
     CONS_Printf(player, "  Errores: " .. tostring(totalErrores))
+    CONS_Printf(player, "  Ayudas: " .. tostring(totalAyudas))
     CONS_Printf(player, "  Producciones observadas: " .. tostring(totalProducciones))
     CONS_Printf(player, "Juego libre: " .. tostring(fonoFlujoSesion.duracionJuegoSegundos) .. " segundos configurados")
     CONS_Printf(player, "Registro descriptivo; no constituye diagnostico.")
@@ -3579,15 +3337,11 @@ fonoReiniciarFlujo = function()
     fonoFlujoSesion.indiceActividad = 0
     fonoFlujoSesion.resultados = {}
     fonoFlujoSesion.actividadCapturada = false
-    fonoFlujoSesion.ticsTransicion = 0
-    fonoFlujoSesion.playerTransicion = nil
     fonoFlujoSesion.duracionJuegoSegundos = duracionConfigurada
     fonoFlujoSesion.tiempoJuegoRestante = 0
     fonoFlujoSesion.avisoTreintaSegundos = false
-    fonoFlujoSesion.conservarSesion = false
     fonoFlujoSesion.reporteFinalPendiente = false
     fonoFlujoSesion.reiniciarActividadesAlVolver = false
-    fonoFlujoSesion.salidaConfigurada = false
     fonoFlujoSesion.checkpointActual = 0
     fonoFlujoSesion.sectorAnterior = nil
     fonoFlujoSesion.posicionSegura = nil
@@ -3611,16 +3365,7 @@ local fonoActividadesAventura = {
         checkpoint = 101,
         centro = { x = -6784 * FRACUNIT, y = 0, z = 0, angle = 0 },
         iniciar = function(player)
-            fonoIniciarParesSilaba(player, "MA", {
-                {
-                    izquierda = "mano",
-                    derecha = "pato"
-                },
-                {
-                    izquierda = "bala",
-                    derecha = "mapa"
-                }
-            }, "ETAPA 1/6: Silaba inicial MA")
+            fonoIniciarParesSilaba(player, "MA", fonoDefinicionesPares.MA, "ETAPA 1/6: Silaba inicial MA")
         end
     },
     {
@@ -3630,20 +3375,7 @@ local fonoActividadesAventura = {
         checkpoint = 111,
         centro = { x = -5248 * FRACUNIT, y = 0, z = 0, angle = 0 },
         iniciar = function(player)
-            fonoIniciarParesSilaba(player, "PA", {
-                {
-                    izquierda = "pato",
-                    derecha = "mano"
-                },
-                {
-                    izquierda = "mapa",
-                    derecha = "pala"
-                },
-                {
-                    izquierda = "papa",
-                    derecha = "bala"
-                }
-            }, "ETAPA 2/6: Silaba inicial PA")
+            fonoIniciarParesSilaba(player, "PA", fonoDefinicionesPares.PA, "ETAPA 2/6: Silaba inicial PA")
         end
     },
     {
@@ -3654,20 +3386,7 @@ local fonoActividadesAventura = {
         centro = { x = -2944 * FRACUNIT, y = 512 * FRACUNIT,
             z = 0, angle = 0 },
         iniciar = function(player)
-            fonoIniciarParesSilaba(player, "BA", {
-                {
-                    izquierda = "bala",
-                    derecha = "pato"
-                },
-                {
-                    izquierda = "mano",
-                    derecha = "barco"
-                },
-                {
-                    izquierda = "banco",
-                    derecha = "mapa"
-                }
-            }, "ETAPA 3/6: Silaba inicial BA")
+            fonoIniciarParesSilaba(player, "BA", fonoDefinicionesPares.BA, "ETAPA 3/6: Silaba inicial BA")
         end
     },
     {
@@ -3678,20 +3397,7 @@ local fonoActividadesAventura = {
         centro = { x = -640 * FRACUNIT, y = -512 * FRACUNIT,
             z = 0, angle = 0 },
         iniciar = function(player)
-            fonoIniciarParesCategoria(player, "animal", {
-                {
-                    izquierda = "gato",
-                    derecha = "mesa"
-                },
-                {
-                    izquierda = "auto",
-                    derecha = "perro"
-                },
-                {
-                    izquierda = "pato",
-                    derecha = "sopa"
-                }
-            }, "ETAPA 4/6: Vocabulario ANIMALES")
+            fonoIniciarParesCategoria(player, "animal", fonoDefinicionesPares.animal, "ETAPA 4/6: Vocabulario ANIMALES")
         end
     },
     {
@@ -3701,20 +3407,7 @@ local fonoActividadesAventura = {
         checkpoint = 150,
         centro = { x = 1920 * FRACUNIT, y = 0, z = 0, angle = 0 },
         iniciar = function(player)
-            fonoIniciarParesCategoria(player, "comida", {
-                {
-                    izquierda = "pan",
-                    derecha = "bus"
-                },
-                {
-                    izquierda = "perro",
-                    derecha = "queso"
-                },
-                {
-                    izquierda = "manzana",
-                    derecha = "auto"
-                }
-            }, "ETAPA 5/6: Vocabulario COMIDAS")
+            fonoIniciarParesCategoria(player, "comida", fonoDefinicionesPares.comida, "ETAPA 5/6: Vocabulario COMIDAS")
         end
     },
     {
@@ -3724,20 +3417,7 @@ local fonoActividadesAventura = {
         checkpoint = nil,
         centro = { x = 4224 * FRACUNIT, y = 0, z = 0, angle = 0 },
         iniciar = function(player)
-            fonoIniciarParesCategoria(player, "transporte", {
-                {
-                    izquierda = "auto",
-                    derecha = "sopa"
-                },
-                {
-                    izquierda = "mesa",
-                    derecha = "bus"
-                },
-                {
-                    izquierda = "tren",
-                    derecha = "gato"
-                }
-            }, "ETAPA 6/6: Vocabulario TRANSPORTES")
+            fonoIniciarParesCategoria(player, "transporte", fonoDefinicionesPares.transporte, "ETAPA 6/6: Vocabulario TRANSPORTES")
         end
     }
 }
@@ -3759,12 +3439,16 @@ local function fonoGuardarPosicionSegura(player)
         return
     end
 
-    fonoFlujoSesion.posicionSegura = {
-        x = player.mo.x,
-        y = player.mo.y,
-        z = player.mo.z,
-        angle = player.mo.angle
-    }
+    -- Reutilizar la posicion evita crear una tabla en cada PlayerThink.
+    local posicion = fonoFlujoSesion.posicionSegura
+    if posicion == nil then
+        posicion = {}
+        fonoFlujoSesion.posicionSegura = posicion
+    end
+    posicion.x = player.mo.x
+    posicion.y = player.mo.y
+    posicion.z = player.mo.z
+    posicion.angle = player.mo.angle
 end
 
 local function fonoRegresarAPosicionSegura(player)
@@ -3801,7 +3485,6 @@ end
 local function fonoPrepararMeta(player)
     fonoLimpiarMuroMeta()
     fonoFlujoSesion.fase = "meta_lista"
-    fonoFlujoSesion.playerTransicion = player
 
     -- Dejamos configurada la salida antes de que Sonic alcance la meta.
     G_SetCustomExitVars(fonoFlujoSesion.mapaJuego, 1)
@@ -3837,7 +3520,6 @@ local function fonoIniciarActividadAventura(player, indice)
     fonoFlujoSesion.indiceActividad = indice
     fonoFlujoSesion.actividadCapturada = false
     fonoFlujoSesion.fase = "educativa"
-    fonoFlujoSesion.playerTransicion = player
     fonoFlujoSesion.sectorAnterior = fonoObtenerSectorJugador(player)
     fonoGuardarPosicionSegura(player)
 
@@ -3912,15 +3594,31 @@ local function fonoCompletarReinicioEducativo(player)
     return fonoIniciarCicloEducativo(player, true)
 end
 
+local function fonoCompletarFinalizacion(player)
+    if player == nil or player.mo == nil or player.mo.valid == false then return end
+    if fonoFlujoSesion.fase == "finalizada"
+    and fonoFlujoSesion.reporteFinalPendiente == true then
+        fonoFlujoSesion.reporteFinalPendiente = false
+        player.rings = 20
+
+        CONS_Printf(player, "La aventura Sonic FonoKids finalizo correctamente.")
+        fonoMostrarResumenAventura(player)
+
+        if fonoSetHud ~= nil then
+            fonoSetHud(player, "SESION FINALIZADA", "¡GRACIAS POR JUGAR!", TICRATE * 10)
+        end
+    end
+end
+
 local function fonoIrAlJuegoLibre(player)
     if fonoFlujoSesion.fase == "cambiando_juego"
     or fonoFlujoSesion.fase == "juego" then
         return
     end
 
+    if sesion.tiempo_fin == nil then sesion.tiempo_fin = leveltime end
+    fonoLimpiarObjetosActivos()
     fonoFlujoSesion.fase = "cambiando_juego"
-    fonoFlujoSesion.conservarSesion = true
-    fonoFlujoSesion.playerTransicion = player
 
     CONS_Printf(player, "Todas las actividades fueron completadas.")
     CONS_Printf(player, "Premio desbloqueado: juego libre en Greenflower Zone Act 1.")
@@ -3937,8 +3635,6 @@ local function fonoRegresarAlMapaEducativo(player, motivo, reiniciarActividades)
     end
 
     fonoFlujoSesion.fase = "regresando"
-    fonoFlujoSesion.conservarSesion = true
-    fonoFlujoSesion.salidaConfigurada = true
     fonoFlujoSesion.reiniciarActividadesAlVolver = reiniciarActividades == true
 
     if player ~= nil then
@@ -3964,7 +3660,6 @@ revisarCierreActividad = function(player)
 
     fonoFlujoSesion.actividadCapturada = true
     fonoCapturarActividadActual()
-    fonoFlujoSesion.playerTransicion = player
 
     if fonoFlujoSesion.indiceActividad < #fonoActividadesAventura then
         fonoFlujoSesion.fase = "checkpoint_listo"
@@ -3982,13 +3677,16 @@ revisarCierreActividad = function(player)
 end
 
 addHook("ThinkFrame", function()
-    if fonoFlujoSesion.fase == "reiniciando_educativa" then
+    if fonoFlujoSesion.fase == "reiniciando_educativa"
+    or (fonoFlujoSesion.fase == "finalizada"
+    and fonoFlujoSesion.reporteFinalPendiente == true) then
         -- Dependiendo del cambio de mapa, SRB2 puede ejecutar PlayerSpawn
         -- antes que MapLoad. El primer frame con un jugador valido garantiza
         -- que el nuevo ciclo educativo comience en ambos ordenes de eventos.
         for player in players.iterate do
             if player.mo ~= nil and player.mo.valid then
                 fonoCompletarReinicioEducativo(player)
+                fonoCompletarFinalizacion(player)
                 break
             end
         end
@@ -4020,13 +3718,13 @@ addHook("ThinkFrame", function()
 end)
 
 addHook("MapLoad", function()
+    fonoLimpiarObjetosActivos()
+
     if fonoFlujoSesion.fase == "cambiando_juego"
     and gamemap == fonoFlujoSesion.mapaJuego then
         fonoFlujoSesion.fase = "juego"
-        fonoFlujoSesion.conservarSesion = false
         fonoFlujoSesion.tiempoJuegoRestante = fonoFlujoSesion.duracionJuegoSegundos * TICRATE
         fonoFlujoSesion.avisoTreintaSegundos = false
-        fonoFlujoSesion.salidaConfigurada = false
         return
     end
 
@@ -4039,18 +3737,26 @@ addHook("MapLoad", function()
         end
 
         fonoFlujoSesion.activo = false
-        fonoFlujoSesion.conservarSesion =
-            fonoFlujoSesion.reiniciarActividadesAlVolver == true
         fonoFlujoSesion.reporteFinalPendiente = true
         return
     end
 
-    if fonoFlujoSesion.fase == "juego" then
+    if fonoFlujoSesion.fase == "juego"
+    and gamemap ~= fonoFlujoSesion.mapaEducativo then
         -- Las salidas normales conservan el premio: MAP01 puede avanzar
         -- a MAP02 y a los actos siguientes sin reiniciar el temporizador.
-        fonoFlujoSesion.conservarSesion = false
-        fonoFlujoSesion.salidaConfigurada = false
+        return
     end
+
+    -- Un map manual cancela el recorrido anterior y deja listo el inicio normal.
+    fonoReiniciarFlujo()
+    iniciarSesion()
+end)
+
+addHook("GameQuit", function()
+    fonoLimpiarObjetosActivos()
+    fonoReiniciarFlujo()
+    iniciarSesion()
 end)
 
 addHook("PlayerSpawn", function(player)
@@ -4069,18 +3775,7 @@ addHook("PlayerSpawn", function(player)
         return
     end
 
-    if fonoFlujoSesion.fase == "finalizada"
-    and fonoFlujoSesion.reporteFinalPendiente == true then
-        fonoFlujoSesion.reporteFinalPendiente = false
-        player.rings = 20
-
-        CONS_Printf(player, "La aventura Sonic FonoKids finalizo correctamente.")
-        fonoMostrarResumenAventura(player)
-
-        if fonoSetHud ~= nil then
-            fonoSetHud(player, "SESION FINALIZADA", "¡GRACIAS POR JUGAR!", TICRATE * 10)
-        end
-    end
+    fonoCompletarFinalizacion(player)
 end)
 
 addHook("TouchSpecial", function(special, toucher)
@@ -4361,12 +4056,14 @@ end)
 
 COM_AddCommand("fonoaventuraayuda", function(player)
     CONS_Printf(player, "========== AVENTURA FONOKIDS ==========")
-    CONS_Printf(player, "1) map MAPA0")
-    CONS_Printf(player, "2) fonoaventura Demo_001 5a0m")
-    CONS_Printf(player, "3) Los objetos aparecen al entrar a cada zona.")
-    CONS_Printf(player, "4) Toca una opcion y registra 1-5 en cada par.")
-    CONS_Printf(player, "5) Cruza el poste checkpoint para abrir la siguiente etapa.")
-    CONS_Printf(player, "6) Completa todo para quitar el muro de la meta.")
+    CONS_Printf(player, "1) devmode 1")
+    CONS_Printf(player, "2) map MAPA0")
+    CONS_Printf(player, "3) fonotiempo 5")
+    CONS_Printf(player, "4) fonoaventura Demo_001 5a0m")
+    CONS_Printf(player, "Los objetos aparecen al entrar a cada zona.")
+    CONS_Printf(player, "Toca una opcion y registra 1-5 en cada par.")
+    CONS_Printf(player, "Cruza el poste checkpoint para abrir la siguiente etapa.")
+    CONS_Printf(player, "Completa todo para quitar el muro de la meta.")
     CONS_Printf(player, "fonoetapa     -> muestra etapa y checkpoints")
     CONS_Printf(player, "fonotiempo 5  -> configura cinco minutos")
     CONS_Printf(player, "fonofinjuego  -> permite al adulto terminar antes")
