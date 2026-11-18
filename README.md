@@ -10,6 +10,7 @@ El proyecto combina programación y Fonoaudiología para construir una experienc
 ## Estado actual
 
 Versión del mod: **v0.0.13 experimental**
+
 Última actualización del README: **2 de octubre de 2026**
 
 Esta rama conserva el recorrido de v0.0.12 y optimiza sus registros, limpieza y estados. Las pruebas de lógica con el intérprete Lua de SRB2 y la verificación del PK3 pasan; la validación visual y jugable de estos cambios en SRB2 está pendiente. La tabla siguiente describe las funcionalidades del proyecto, no una nueva prueba visual. Ver [cambios y comprobación local](Docs/optimizacion.md).
