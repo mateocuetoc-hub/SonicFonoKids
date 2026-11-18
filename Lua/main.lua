@@ -892,58 +892,80 @@ fonoSetHud = function(player, linea1, linea2, tiempo)
     player.fono_hud_timer = tiempo or TICRATE * 5
 end
 
+local FONO_HUD_ENTRADA = 12 -- Duracion en tics: aproximadamente 0,34 s.
+
+local function fonoTextoHud(player)
+    if fonoFlujoSesion ~= nil then
+        local fase = fonoFlujoSesion.fase
+        if fase == "juego" or fase == "cambiando_juego"
+        or fase == "regresando" or fase == "reiniciando_educativa" then
+            return nil
+        end
+    end
+
+    if fonoPares ~= nil and fonoPares.activo == true then
+        if fonoPares.esperandoEvaluacion == true then
+            return "AHORA DI: "
+                .. string.upper(tostring(fonoPares.palabraObjetivo or "")),
+                "ADULTO: 1 OK | 2 OMISION | 3 SUST.",
+                "4 DISTORSION | 5 CON AYUDA"
+        elseif fonoPares.esperandoSiguiente == true then
+            return "PREPARANDO SIGUIENTE...", "", ""
+        end
+
+        local objetivo = string.upper(tostring(fonoPares.objetivo or ""))
+        if fonoPares.modo == "categoria" then
+            return "BUSCA: " .. objetivo, "TOCA UNA IMAGEN", ""
+        end
+        return "EMPIEZA CON: " .. objetivo, "TOCA UNA IMAGEN", ""
+    end
+
+    if player.fono_hud_timer ~= nil and player.fono_hud_timer > 0 then
+        return player.fono_hud_linea1 or "", player.fono_hud_linea2 or "", ""
+    end
+    return nil
+end
+
 addHook("ThinkFrame", function()
     for player in players.iterate do
         if player.fono_hud_timer ~= nil and player.fono_hud_timer > 0 then
             player.fono_hud_timer = player.fono_hud_timer - 1
+        end
+
+        local l1, l2, l3 = fonoTextoHud(player)
+        local anim = player.fono_hud_anim
+
+        if l1 == nil then
+            player.fono_hud_anim = nil
+        elseif anim == nil or anim.mapa ~= gamemap
+        or anim.linea1 ~= l1 or anim.linea2 ~= l2 or anim.linea3 ~= l3 then
+            player.fono_hud_anim = {
+                linea1 = l1, linea2 = l2, linea3 = l3,
+                tics = 0, mapa = gamemap
+            }
+        elseif anim.tics < FONO_HUD_ENTRADA then
+            anim.tics = anim.tics + 1
         end
     end
 end)
 
 addHook("HUD", function(v, player)
     if player == nil then return end
+    local anim = player.fono_hud_anim
+    if anim == nil then return end
 
-    if fonoFlujoSesion ~= nil then
-        local fase = fonoFlujoSesion.fase
-        if fase == "juego" or fase == "cambiando_juego"
-        or fase == "regresando" or fase == "reiniciando_educativa" then
-            return
-        end
-    end
-
-    local linea1, linea2, linea3 = "", "", ""
-
-    if fonoPares ~= nil and fonoPares.activo == true then
-        if fonoPares.esperandoEvaluacion == true then
-            linea1 = "AHORA DI: "
-                .. string.upper(tostring(fonoPares.palabraObjetivo or ""))
-            linea2 = "ADULTO: 1 OK | 2 OMISION | 3 SUST."
-            linea3 = "4 DISTORSION | 5 CON AYUDA"
-        elseif fonoPares.esperandoSiguiente == true then
-            linea1 = "PREPARANDO SIGUIENTE..."
-        else
-            local objetivo = string.upper(tostring(fonoPares.objetivo or ""))
-            if fonoPares.modo == "categoria" then
-                linea1 = "BUSCA: " .. objetivo
-            else
-                linea1 = "EMPIEZA CON: " .. objetivo
-            end
-            linea2 = "TOCA UNA IMAGEN"
-        end
-    elseif player.fono_hud_timer ~= nil and player.fono_hud_timer > 0 then
-        linea1 = player.fono_hud_linea1 or ""
-        linea2 = player.fono_hud_linea2 or ""
-    else
-        return
-    end
-
+    local avance = anim.tics * FRACUNIT / FONO_HUD_ENTRADA
+    local x = 312 * FRACUNIT + ease.outquad(avance, 8 * FRACUNIT, 0)
+    local transparencia = 7 - (anim.tics * 7 / FONO_HUD_ENTRADA)
     local flags = V_SNAPTOTOP|V_SNAPTORIGHT
-    v.drawString(312, 8, linea1, flags, "thin-right")
-    if linea2 ~= "" then
-        v.drawString(312, 20, linea2, flags, "small-right")
+        |(transparencia << V_ALPHASHIFT)
+
+    v.drawString(x, 8 * FRACUNIT, anim.linea1, flags, "thin-fixed-right")
+    if anim.linea2 ~= "" then
+        v.drawString(x, 20 * FRACUNIT, anim.linea2, flags, "small-fixed-right")
     end
-    if linea3 ~= "" then
-        v.drawString(312, 28, linea3, flags, "small-right")
+    if anim.linea3 ~= "" then
+        v.drawString(x, 28 * FRACUNIT, anim.linea3, flags, "small-fixed-right")
     end
 end, "game")
 
