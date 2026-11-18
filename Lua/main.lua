@@ -18,6 +18,15 @@ local fonoLimpiarObjetosPares
 local fonoSetHud
 local fonoAplicarSpritePalabra
 local fonoConfigurarBancoPorSilaba
+local fonoBienvenidaIniciada = false
+
+local function fonoBienvenidaVisible()
+    return fonoBienvenidaIniciada ~= true
+        and fonoFlujoSesion ~= nil
+        and gamemap == fonoFlujoSesion.mapaEducativo
+        and fonoFlujoSesion.activo ~= true
+        and fonoFlujoSesion.fase == "inactiva"
+end
 
 -- Los comandos de actividad comparten las mismas reglas de entrada.
 -- Las llamadas internas de la aventura no pasan por este registro.
@@ -52,6 +61,7 @@ local function fonoRegistrarComando(nombre, accion)
                 CONS_Printf(player, "Espera el regreso al mapa educativo para iniciar otra actividad.")
                 return
             end
+            fonoBienvenidaIniciada = true
             fonoLimpiarObjetosActivos()
             fonoReiniciarFlujo()
             if fonoComandosMA[nombre] == true then
@@ -3157,6 +3167,26 @@ fonoFlujoSesion = {
     ticsAvisoBloqueo = 0
 }
 
+addHook("PlayerCmd", function(player, cmd)
+    if not fonoBienvenidaVisible() or cmd == nil then return end
+    cmd.forwardmove = 0
+    cmd.sidemove = 0
+    cmd.buttons = 0
+end)
+
+addHook("HUD", function(v, player)
+    if player == nil or not fonoBienvenidaVisible() then return end
+    if menuactive == true then return end
+
+    v.fadeScreen(0xFF00, 16)
+    v.drawString(160, 44, "SONIC FONOKIDS", V_YELLOWMAP, "center")
+    v.drawString(160, 68, "APRENDE, EXPLORA Y JUEGA", 0, "thin-center")
+    v.drawString(160, 100, "ENTER: COMENZAR AVENTURA", V_YELLOWMAP, "thin-center")
+    v.drawString(160, 126, "6 ACTIVIDADES + JUEGO LIBRE", 0, "small-center")
+    v.drawString(160, 144, "REGISTRO ORAL: ADULTO CON TECLAS 1-5", 0, "small-center")
+    v.drawString(160, 170, "DEMO_001 | EDAD SIN REGISTRAR", 0, "small-center")
+end, "game")
+
 local fonoMapaAventura = {
     sectorInicio = 100,
     sectorMeta = 160,
@@ -3988,6 +4018,21 @@ COM_AddCommand("fonoaventura", function(player, codigo, edad)
     fonoDatosParticipante.codigo = tostring(codigo)
     fonoDatosParticipante.edad = tostring(edad)
     fonoIniciarCicloEducativo(player, false)
+end)
+
+addHook("KeyDown", function(evento)
+    if evento == nil or evento.repeated == true
+    or menuactive == true or not fonoBienvenidaVisible() then
+        return
+    end
+
+    local nombreTecla = string.upper(tostring(evento.name or ""))
+    if nombreTecla ~= "ENTER" and nombreTecla ~= "KEY_ENTER" then return end
+    if consoleplayer == nil then return end
+
+    fonoBienvenidaIniciada = true
+    COM_BufInsertText(consoleplayer, "fonoaventura Demo_001 no_registrada")
+    return true
 end)
 
 COM_AddCommand("fonotiempo", function(player, minutos)
