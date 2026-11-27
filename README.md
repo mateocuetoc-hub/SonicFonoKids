@@ -11,9 +11,13 @@ El proyecto combina programación y Fonoaudiología para construir una experienc
 
 Versión del mod: **v0.0.13 experimental**
 
-Última actualización del README: **2 de octubre de 2026**
+Última actualización del README: **27 de noviembre de 2026**
 
-Esta rama conserva el recorrido de v0.0.12 y optimiza sus registros, limpieza y estados. Las pruebas de lógica con el intérprete Lua de SRB2 y la verificación del PK3 pasan; la validación visual y jugable de estos cambios en SRB2 está pendiente. La tabla siguiente describe las funcionalidades del proyecto, no una nueva prueba visual. Ver [cambios y comprobación local](Docs/optimizacion.md).
+La rama `main` reúne el circuito educativo, las optimizaciones de registros y estados, el **HUD compacto con entrada animada** y la **bienvenida para iniciar con Enter**. El lanzador abre directamente el mapa educativo `MAPA0`.
+
+Durante el desarrollo se comprobaron manualmente el HUD compacto, las animaciones y el inicio desde la bienvenida en SRB2. Las comprobaciones automatizadas documentadas en [Docs/optimizacion.md](Docs/optimizacion.md) corresponden a la etapa de optimización anterior; esa documentación no sustituye la validación de la interfaz actual. No se afirma que esas pruebas se hayan vuelto a ejecutar para esta actualización del README.
+
+La bienvenida todavía requiere ajustar su restablecimiento al cerrar una partida o recargar un mapa en la misma ejecución. Ver [Pendientes conocidos](#pendientes-conocidos).
 
 | Área | Estado | Avance disponible |
 |---|---:|---|
@@ -21,7 +25,7 @@ Esta rama conserva el recorrido de v0.0.12 y optimiza sus registros, limpieza y 
 | Actividades fonológicas | ✅ Funcional | Sílabas iniciales `MA`, `PA` y `BA` |
 | Elección entre pares | ✅ Funcional | Dos pictogramas simultáneos con alternancia de lado correcto |
 | Vocabulario | ✅ Funcional | Categorías animales, comidas y transportes |
-| HUD y feedback | ✅ Funcional | Progreso de etapas y tiempo libre debajo de `RINGS`, más guía de evaluación oral `1–5` |
+| HUD y feedback | ✅ Funcional | Consignas persistentes y animadas; etapa y avisos compactos abajo a la derecha; reloj de juego libre arriba a la derecha |
 | Pictogramas | ✅ Integrados | 18 palabras con sprites propios que aparecen automáticamente al entrar a cada etapa |
 | Reportes | ✅ Funcional | Reporte en consola, detalle por par y salida tipo JSON |
 | Evaluación descriptiva oral | ✅ Flujo guiado | Pausa tras cada elección y registro manual con teclado o comandos `1–5` |
@@ -31,13 +35,13 @@ Esta rama conserva el recorrido de v0.0.12 y optimiza sus registros, limpieza y 
 | Progresión por checkpoints | ✅ Implementada | Cinco Star Posts visibles marcan los pasillos, guardan el respawn y desbloquean la zona siguiente |
 | Juego libre | ✅ Funcional | Premio de cinco minutos que continúa entre los actos de Greenflower Zone con temporizador HUD |
 | Demostración académica | ✅ Preparada | Recorrido completo: actividades, observación oral, juego libre y resumen final |
-| Integración automática al mapa | 🧪 Parcial | `fonoaventura` automatiza el recorrido; el inicio todavía se realiza desde consola |
+| Bienvenida e inicio | ✅ Funcional con pendientes | El lanzador abre `MAPA0` y Enter inicia la aventura con `Demo_001` y edad `no_registrada`; restablecimiento de la bienvenida pendiente |
 
 ## Qué demuestra la versión v0.0.13
 
-El modo recomendado inicia una aventura de seis etapas: sílabas iniciales `MA`, `PA` y `BA`, animales, comidas y transportes. Los objetos educativos aparecen automáticamente al iniciar cada etapa, anclados en una posición fija y centrada de su sala. En cada ejercicio se presentan dos pictogramas, se registra cuál fue tocado y el juego se detiene para que una persona adulta clasifique la producción oral con las teclas `1` a `5`.
+El inicio recomendado consiste en ejecutar `./build.sh && ./run-opengl.sh` y pulsar **Enter** en la bienvenida. Comienza una aventura de seis etapas: sílabas iniciales `MA`, `PA` y `BA`, animales, comidas y transportes. Los objetos educativos aparecen automáticamente al iniciar cada etapa, anclados en una posición fija y centrada de su sala. En cada ejercicio se presentan dos pictogramas, se registra cuál fue tocado y el juego se detiene para que una persona adulta clasifique la producción oral con las teclas `1` a `5`.
 
-El HUD de etapas y del juego libre se presenta debajo del contador de anillos, dejando visible la información original de SRB2 durante la grabación.
+El HUD muestra la consigna arriba a la derecha y conserva el texto mientras se espera una elección. Al cambiar el mensaje, una animación breve de desplazamiento y transparencia da entrada al texto, que después queda fijo. La etapa y los avisos de avance aparecen abajo a la derecha; durante el juego libre se muestra un reloj compacto arriba a la derecha. El HUD original de SRB2 sigue visible. Los contadores de aciertos, errores e intentos se conservan en los registros y reportes, sin mostrarse permanentemente en el HUD educativo.
 
 Al completar una actividad —sin exigir respuestas perfectas— se habilita el Star Post que conduce a la siguiente sección. Los intentos de cruzarlo antes de tiempo devuelven a Sonic a una posición segura. Al tocarlo, funciona además como punto de reaparición al estilo de los actos de Sonic. Un muro sólido adicional bloquea físicamente la línea de meta y desaparece únicamente después de completar transportes. Alcanzar la meta inicia un periodo configurable de juego libre en Greenflower Zone. Si Sonic termina Act 1 antes de que venza el reloj, avanza normalmente a Act 2 y conserva el tiempo restante. Al agotarse el temporizador, vuelve a `MAPA0`, muestra el resumen anterior y comienza automáticamente un nuevo circuito desde la actividad `MA`.
 
@@ -122,26 +126,20 @@ El diseño está pensado como base editable. La geometría ya fue probada dentro
 
 ## Estructura del repositorio
 
-```text
-SonicFonoKids/
-├── Docs/
-│   └── mapa-fonokids.md
-├── Lua/
-│   └── main.lua
-├── Maps/
-│   └── MAP01.wad
-├── Reports/
-│   ├── prompt_reporte_ia.md
-│   └── sesion_demo.json
-├── SOC/
-├── Sounds/
-├── Sprites/
-├── Tools/
-│   └── generar_reporte.py
-├── build.sh
-├── README.md
-└── .gitignore
-```
+| Ruta | Contenido |
+|---|---|
+| `Lua/main.lua` | Actividades, sesiones, HUD, bienvenida, aventura y controles de registro |
+| `Maps/MAP01.wad` | Mapa fuente; se empaqueta como `MAPA0` |
+| `SOC/map01.soc` | Definiciones del mapa |
+| `Sprites/` | Pictogramas PNG de las palabras |
+| `Music/` | Música del mapa |
+| `Reports/` | Sesión de ejemplo y plantilla de reporte |
+| `Tools/` | Generación de reportes y conversión del marcador del mapa |
+| `Tests/` | Pruebas de lógica y empaquetado |
+| `Docs/` | Documentación del mapa y de la optimización |
+| `build.sh` | Generación e instalación local del PK3 |
+| `run-opengl.sh` | Inicio con OpenGL y entrada directa a `MAPA0` |
+| `README.md` | Instalación, uso y estado del proyecto |
 
 Los respaldos locales deben guardarse fuera de `Lua/`. El script de compilación exige que esa carpeta contenga únicamente `Lua/main.lua`, evitando que SRB2 cargue comandos duplicados.
 
@@ -169,12 +167,15 @@ git clone https://github.com/mateocuetoc-hub/SonicFonoKids.git
 cd SonicFonoKids
 ```
 
-Si el repositorio ya estaba clonado, actualiza la rama estable antes de compilar:
+Si el repositorio ya estaba clonado, revisa primero tus cambios locales con `git status -sb`. Para actualizar `main` desde la carpeta del proyecto:
 
 ```bash
-cd ~/SRB2Mods/SonicFonoKids
+git fetch origin &&
+git switch main &&
 git pull --ff-only origin main
 ```
+
+Conserva los cambios locales antes de cambiar de rama. Las rutas `~/SRB2Mods/SonicFonoKids` de esta guía son un ejemplo de instalación; si clonaste en otra carpeta, usa esa ubicación.
 
 ## Compilar el PK3
 
@@ -188,7 +189,7 @@ El script:
 
 1. comprueba que `Lua/` sólo contenga `main.lua`;
 2. genera una copia temporal del mapa cuyo marcador cambia de `MAP01` a `MAPA0`;
-3. empaqueta `Lua/`, `SOC/`, `Sprites/`, `Sounds/`, `Music/` y `Maps/MAPA0.wad`;
+3. empaqueta `Lua/`, `SOC/`, `Sprites/`, `Music/` y `Maps/MAPA0.wad`; también incluye `Sounds/` cuando esa carpeta está presente;
 4. genera `~/SRB2Mods/SonicFonoKids.pk3`;
 5. copia el PK3 a la carpeta de addons de SRB2 Flatpak.
 
@@ -198,31 +199,45 @@ Para confirmar que el mapa quedó dentro del paquete:
 unzip -l "$HOME/.var/app/org.srb2.SRB2/.srb2/addons/SonicFonoKids.pk3" | grep -i MAPA0
 ```
 
-## Abrir el juego en OpenGL y cargar el mapa educativo
+## Abrir el juego e iniciar desde la bienvenida
+
+Desde la carpeta del proyecto:
+
+```bash
+./build.sh && ./run-opengl.sh
+```
+
+Si el PK3 ya está compilado, basta con ejecutar:
 
 ```bash
 ./run-opengl.sh
 ```
 
-El lanzador solicita explícitamente el renderizador OpenGL, necesario para usar
-modelos poligonales cuando el paquete de modelos está instalado. Si OpenGL no
-inicia, ejecuta `flatpak update` y comprueba los controladores disponibles con
-`flatpak --gl-drivers`.
+El lanzador carga el addon con OpenGL y utiliza `-warp MAPA0` para entrar directamente al mapa educativo. En el primer arranque aparece la bienvenida **«ENTER: COMENZAR AVENTURA»**. Mientras está visible, las entradas de movimiento y acción de Sonic están bloqueadas.
 
-Cuando el mod se inicia con `-file`, no se debe cargar el mismo PK3 nuevamente desde el menú **Addons**.
+Pulsa **Enter** para comenzar. Este inicio utiliza el código ficticio `Demo_001`, deja la edad como `no_registrada` y conserva la duración configurada del juego libre, que por defecto es de cinco minutos. No se asigna una edad real automáticamente.
 
-Abre la consola de SRB2 con la tecla situada debajo de `Esc` y ejecuta:
+El lanzador solicita el renderizador OpenGL, necesario para usar modelos poligonales cuando el paquete de modelos está instalado. Si OpenGL no inicia, ejecuta `flatpak update` y comprueba los controladores disponibles con `flatpak --gl-drivers`.
 
-```text
-devmode 1
-map MAPA0
-```
+El addon ya se carga mediante `-file`; cargar de nuevo el mismo PK3 desde **Addons** puede duplicar su carga.
+
+La consola queda disponible para configurar una sesión manual, ajustar el premio y usar herramientas de desarrollo; no es necesaria para el inicio rápido desde el lanzador.
 
 ## Demo rápida recomendada
 
-La demostración completa dura aproximadamente entre ocho y doce minutos, incluyendo cinco minutos de juego libre. Una persona controla a Sonic y toca los pictogramas; una persona adulta observa la producción oral y la registra con el teclado.
+La duración depende del ritmo del participante y del registro oral. El premio predeterminado es de cinco minutos de juego libre. Una persona controla a Sonic y toca los pictogramas; una persona adulta observa la producción oral y la registra con el teclado.
 
-### 1. Iniciar la aventura con una sesión anónima
+### 1. Iniciar la aventura desde la bienvenida
+
+1. Compila y abre el juego con `./build.sh && ./run-opengl.sh`.
+2. Espera a que cargue `MAPA0` y aparezca la bienvenida.
+3. Pulsa **Enter**. Se inicia `MA` y aparecen los dos primeros pictogramas.
+
+El inicio rápido usa `Demo_001` y `no_registrada` como datos de demostración. Las actividades, pictogramas, checkpoints y el regreso educativo se gestionan automáticamente.
+
+#### Inicio manual opcional y datos de sesión
+
+Para usar otro código anónimo, registrar una edad o preparar una prueba, siguen disponibles los comandos de consola. Por ejemplo:
 
 ```text
 devmode 1
@@ -231,7 +246,7 @@ fonotiempo 5
 fonoaventura Demo_001 5a0m
 ```
 
-Estos cuatro comandos bastan después de cargar el addon. Las actividades, pictogramas, checkpoints y el regreso educativo se gestionan automáticamente; no se necesitan comandos de limpieza. `Demo_001` es un identificador ficticio y `5a0m` representa una edad de cinco años y cero meses. No se deben utilizar nombres reales.
+En este ejemplo, `Demo_001` es ficticio y `5a0m` representa cinco años y cero meses. Esa edad solo se guarda si se indica expresamente; pulsar Enter en la bienvenida mantiene `no_registrada`. No se deben utilizar nombres reales.
 
 ### 2. Completar las seis etapas
 
@@ -296,7 +311,7 @@ Para comprobar rápidamente todos los modos de pares, estas son las respuestas o
 | `fonosala` | Explica el flujo de las salas educativas |
 | `fonosalademo` | Recorre la demostración guiada de salas |
 | `fonosalalimpia` | Elimina objetos educativos activos y reinicia la sala de prueba |
-| `fonoaventura <código> <edad>` | Inicia el recorrido completo recomendado |
+| `fonoaventura <código> <edad>` | Inicio manual del recorrido con código anónimo y edad; Enter permite el inicio rápido desde la bienvenida |
 | `fonoaventuraayuda` | Explica el flujo de aventura y juego libre |
 | `fonoetapa` | Muestra la etapa, actividad y checkpoints superados |
 | `fonotiempo <minutos>` | Configura el premio entre 1 y 10 minutos |
@@ -342,25 +357,42 @@ Para comprobar rápidamente todos los modos de pares, estas son las respuestas o
 
 ## HUD y feedback infantil
 
-El HUD muestra información como:
+El HUD educativo es compacto. Durante una elección fonológica muestra, por ejemplo:
 
 ```text
-SONIC FONOKIDS
-BUSCA: MA
-IZQ: MANO | DER: PATO
-OK: 0  ERR: 0
-INT: 0/2
+EMPIEZA CON: MA
+TOCA UNA IMAGEN
 ```
 
-Después de seleccionar un pictograma, cambia a la etapa de producción oral:
+En una actividad de categorías, la consigna pasa a `BUSCA: ANIMALES`, `BUSCA: COMIDAS` o `BUSCA: TRANSPORTES`. La consigna permanece mientras el participante elige.
+
+Después de tocar un pictograma, aparece la palabra objetivo para el registro oral:
 
 ```text
-PRODUCCION: MANO
-1 OK  2 OMISION  3 SUST.
-4 DIST.  5 AYUDA
+AHORA DI: MANO
+ADULTO: 1 OK | 2 OMISION | 3 SUST.
+4 DISTORSION | 5 CON AYUDA
 ```
 
-El feedback usa mensajes breves y positivos. No aplica castigos fuertes ni presenta conclusiones clínicas; indica si la palabra coincide con la sílaba o categoría trabajada y espera el registro oral antes de preparar el siguiente par.
+Las indicaciones `1–5` aparecen cuando hay una producción oral pendiente. Se mantienen separadas de la selección visual y no son una calificación que deba introducir el niño.
+
+Cuando cambia el mensaje, el texto entra desde la derecha con transparencia durante **12 tics** (aproximadamente 0,34 segundos) y luego queda quieto. La animación conserva el tamaño y la posición final del HUD compacto.
+
+El progreso se muestra abajo a la derecha:
+
+```text
+ETAPA 1/6 | SILABA MA
+```
+
+Cuando corresponde, se añade el aviso de avanzar al checkpoint, seguir a la siguiente sala o llegar a la meta. Durante el premio se muestra arriba a la derecha:
+
+```text
+JUEGO LIBRE 05:00
+```
+
+Al quedar 30 segundos o menos aparece un aviso. Los contadores de aciertos, errores e intentos siguen guardándose para los reportes.
+
+El flujo espera el registro de la persona adulta antes de preparar el siguiente par. El mod no escucha ni analiza la voz automáticamente.
 
 ## Reportes descriptivos
 
@@ -440,31 +472,24 @@ Durante una evaluación pendiente también se puede presionar directamente `1`, 
 
 ## Flujo de datos
 
-```text
-Elección entre dos pictogramas
-              ↓
-Registro de selección visual
-              ↓
-Observación y registro oral manual (1–5)
-              ↓
-Reporte descriptivo + detalle por par
-              ↓
-Segunda actividad y conservación de ambos resultados
-              ↓
-Juego libre temporizado a través de los actos de Greenflower Zone
-              ↓
-Resumen conjunto de la aventura y reinicio de las actividades
-              ↓
-Salida estructurada individual con fonojson
-              ↓
-Reporte externo con Tools/generar_reporte.py
-              ↓
-Revisión responsable por una persona del área
-```
+1. El lanzador abre `MAPA0` y muestra la bienvenida.
+2. Enter inicia la aventura con los datos de demostración, o un comando permite preparar una sesión manual.
+3. El participante toca una de las dos opciones y se registra la selección visual.
+4. Una persona adulta escucha la palabra objetivo y registra la producción oral con `1–5`.
+5. Se presenta el siguiente par; al completar una actividad se conservan sus resultados y se habilita el avance.
+6. Al completar las seis etapas y alcanzar la meta comienza el juego libre temporizado.
+7. Al agotarse el premio se muestra el resumen en consola y se reinicia automáticamente el circuito educativo.
+8. `fonojson` permite obtener los datos de la actividad y `Tools/generar_reporte.py` genera un reporte externo.
+
+Los reportes describen lo registrado en el juego y requieren revisión por una persona del área.
 
 ## Desarrollo y versiones
 
-La rama `main` contiene la versión estable utilizada para la demostración. Los cambios de lógica deben probarse antes de publicarse y los respaldos locales deben mantenerse fuera de `Lua/` para evitar que SRB2 cargue archivos duplicados.
+La rama `main` contiene la versión experimental actual. El [PR #9](https://github.com/mateocuetoc-hub/SonicFonoKids/pull/9) integró el HUD compacto, la animación de consignas y la bienvenida con inicio mediante Enter.
+
+El código continúa identificándose como **v0.0.13**; esta actualización de documentación no crea una nueva versión del mod.
+
+Los cambios de lógica deben probarse antes de publicarse. Guarda los respaldos fuera de `Lua/` y desarrolla las nuevas funciones en ramas de trabajo.
 
 ## Problemas resueltos durante el desarrollo
 
@@ -486,17 +511,32 @@ La rama `main` contiene la versión estable utilizada para la demostración. Los
 - checkpoints bloqueados hasta completar la etapa correspondiente;
 - meta educativa bloqueada hasta finalizar transportes;
 - transición automática al juego libre y regreso seguro a `MAPA0`;
-- temporizador HUD con aviso de 30 segundos y cierre anticipado por un adulto.
+- temporizador HUD con aviso de 30 segundos y cierre anticipado por un adulto;
+- acumulación de contadores y títulos permanentes en el HUD educativo;
+- desaparición de la consigna durante la espera de elección;
+- falta de una entrada animada al cambiar las consignas;
+- dependencia de comandos para el primer inicio del recorrido desde el lanzador.
+
+## Pendientes conocidos
+
+- **Restablecer la bienvenida:** `fonoBienvenidaIniciada` se activa al comenzar y todavía no se restablece al cerrar una partida o recargar un mapa en la misma ejecución. La bienvenida puede no volver a aparecer en esos casos. La corrección debe respetar el reinicio automático del circuito después del premio.
+- **Configurar datos desde la interfaz:** el inicio con Enter usa `Demo_001` y `no_registrada`. Para indicar otro código o edad se utiliza el inicio manual por consola.
+- **Recursos de introducción:** los bocetos de las tres pantallas y las ilustraciones de Junio Sonic con traje de fono todavía no están integrados.
+- **Controles de la interfaz con mando:** la bienvenida y el registro oral actuales se explican con teclado; su adaptación a mando sigue pendiente.
 
 ## Próximos pasos
 
+- corregir y comprobar el restablecimiento de la bienvenida;
 - decorar `MAPA0` y diferenciar visualmente cada sala;
-- agregar señalética física para cada checkpoint dentro del escenario;
-- iniciar la aventura desde un objeto o zona del mapa, sin depender de la consola;
+- agregar señalética física para los checkpoints;
+- incorporar la introducción visual **mirar → tocar → decir** cuando se retome el trabajo de ilustraciones;
+- agregar sonidos o instrucciones grabadas y una opción para repetir la consigna;
+- mostrar un resumen de sesión dentro del juego;
+- adaptar el inicio y el registro oral a mando;
 - validar en SRB2 las posiciones y límites de las seis zonas;
 - validar con la profesora la duración y el diseño del periodo de juego libre;
-- agregar sonidos o instrucciones grabadas;
 - ampliar el banco de sílabas, palabras y categorías;
+- explorar una actividad de seguimiento de instrucciones dentro del escenario;
 - mejorar la exportación automática de sesiones;
 - realizar pruebas de usabilidad con supervisión fonoaudiológica;
 - grabar y documentar una demostración académica breve.
