@@ -18,6 +18,15 @@ local fonoLimpiarObjetosPares
 local fonoSetHud
 local fonoAplicarSpritePalabra
 local fonoConfigurarBancoPorSilaba
+local fonoBienvenidaIniciada = false
+
+local function fonoBienvenidaVisible()
+    return fonoBienvenidaIniciada ~= true
+        and fonoFlujoSesion ~= nil
+        and gamemap == fonoFlujoSesion.mapaEducativo
+        and fonoFlujoSesion.activo ~= true
+        and fonoFlujoSesion.fase == "inactiva"
+end
 
 -- Los comandos de actividad comparten las mismas reglas de entrada.
 -- Las llamadas internas de la aventura no pasan por este registro.
@@ -52,6 +61,7 @@ local function fonoRegistrarComando(nombre, accion)
                 CONS_Printf(player, "Espera el regreso al mapa educativo para iniciar otra actividad.")
                 return
             end
+            fonoBienvenidaIniciada = true
             fonoLimpiarObjetosActivos()
             fonoReiniciarFlujo()
             if fonoComandosMA[nombre] == true then
@@ -892,59 +902,80 @@ fonoSetHud = function(player, linea1, linea2, tiempo)
     player.fono_hud_timer = tiempo or TICRATE * 5
 end
 
+local FONO_HUD_ENTRADA = 12 -- Duracion en tics: aproximadamente 0,34 s.
+
+local function fonoTextoHud(player)
+    if fonoFlujoSesion ~= nil then
+        local fase = fonoFlujoSesion.fase
+        if fase == "juego" or fase == "cambiando_juego"
+        or fase == "regresando" or fase == "reiniciando_educativa" then
+            return nil
+        end
+    end
+
+    if fonoPares ~= nil and fonoPares.activo == true then
+        if fonoPares.esperandoEvaluacion == true then
+            return "AHORA DI: "
+                .. string.upper(tostring(fonoPares.palabraObjetivo or "")),
+                "ADULTO: 1 OK | 2 OMISION | 3 SUST.",
+                "4 DISTORSION | 5 CON AYUDA"
+        elseif fonoPares.esperandoSiguiente == true then
+            return "PREPARANDO SIGUIENTE...", "", ""
+        end
+
+        local objetivo = string.upper(tostring(fonoPares.objetivo or ""))
+        if fonoPares.modo == "categoria" then
+            return "BUSCA: " .. objetivo, "TOCA UNA IMAGEN", ""
+        end
+        return "EMPIEZA CON: " .. objetivo, "TOCA UNA IMAGEN", ""
+    end
+
+    if player.fono_hud_timer ~= nil and player.fono_hud_timer > 0 then
+        return player.fono_hud_linea1 or "", player.fono_hud_linea2 or "", ""
+    end
+    return nil
+end
+
 addHook("ThinkFrame", function()
     for player in players.iterate do
         if player.fono_hud_timer ~= nil and player.fono_hud_timer > 0 then
             player.fono_hud_timer = player.fono_hud_timer - 1
         end
+
+        local l1, l2, l3 = fonoTextoHud(player)
+        local anim = player.fono_hud_anim
+
+        if l1 == nil then
+            player.fono_hud_anim = nil
+        elseif anim == nil or anim.mapa ~= gamemap
+        or anim.linea1 ~= l1 or anim.linea2 ~= l2 or anim.linea3 ~= l3 then
+            player.fono_hud_anim = {
+                linea1 = l1, linea2 = l2, linea3 = l3,
+                tics = 0, mapa = gamemap
+            }
+        elseif anim.tics < FONO_HUD_ENTRADA then
+            anim.tics = anim.tics + 1
+        end
     end
 end)
 
 addHook("HUD", function(v, player)
-    if player == nil then
-        return
+    if player == nil then return end
+    local anim = player.fono_hud_anim
+    if anim == nil then return end
+
+    local avance = anim.tics * FRACUNIT / FONO_HUD_ENTRADA
+    local x = 312 * FRACUNIT + ease.outquad(avance, 8 * FRACUNIT, 0)
+    local transparencia = 7 - (anim.tics * 7 / FONO_HUD_ENTRADA)
+    local flags = V_SNAPTOTOP|V_SNAPTORIGHT
+        |(transparencia << V_ALPHASHIFT)
+
+    v.drawString(x, 8 * FRACUNIT, anim.linea1, flags, "thin-fixed-right")
+    if anim.linea2 ~= "" then
+        v.drawString(x, 20 * FRACUNIT, anim.linea2, flags, "small-fixed-right")
     end
-
-    if fonoFlujoSesion ~= nil
-    and (fonoFlujoSesion.fase == "juego"
-    or fonoFlujoSesion.fase == "regresando") then
-        return
-    end
-
-    local hudX = 180
-    local hudY = 8
-
-    v.drawString(hudX, hudY, "SONIC FONOKIDS")
-
-    local intentos = 0
-    local correctos = 0
-    local errores = 0
-    local total = 0
-
-    if sesion ~= nil then
-        intentos = sesion.intentos or 0
-        correctos = sesion.correctos or 0
-        errores = sesion.errores or 0
-        total = sesion.total_esperado or 0
-    end
-
-    v.drawString(hudX, hudY + 10, "OK: " .. tostring(correctos) .. "  ERR: " .. tostring(errores))
-    v.drawString(hudX, hudY + 20, "INT: " .. tostring(intentos) .. "/" .. tostring(total))
-
-    if fonoPares ~= nil and fonoPares.esperandoEvaluacion == true then
-        local palabraPendiente = fonoPares.palabraObjetivo or ""
-
-        v.drawString(hudX, hudY + 36, "PRODUCCION: " .. string.upper(tostring(palabraPendiente)))
-        v.drawString(hudX, hudY + 46, "1 OK  2 OMISION  3 SUST.")
-        v.drawString(hudX, hudY + 56, "4 DIST.  5 AYUDA")
-    elseif player.fono_hud_timer ~= nil and player.fono_hud_timer > 0 then
-        if player.fono_hud_linea1 ~= nil then
-            v.drawString(hudX, hudY + 36, player.fono_hud_linea1)
-        end
-
-        if player.fono_hud_linea2 ~= nil then
-            v.drawString(hudX, hudY + 46, player.fono_hud_linea2)
-        end
+    if anim.linea3 ~= "" then
+        v.drawString(x, 28 * FRACUNIT, anim.linea3, flags, "small-fixed-right")
     end
 end, "game")
 
@@ -3136,6 +3167,26 @@ fonoFlujoSesion = {
     ticsAvisoBloqueo = 0
 }
 
+addHook("PlayerCmd", function(player, cmd)
+    if not fonoBienvenidaVisible() or cmd == nil then return end
+    cmd.forwardmove = 0
+    cmd.sidemove = 0
+    cmd.buttons = 0
+end)
+
+addHook("HUD", function(v, player)
+    if player == nil or not fonoBienvenidaVisible() then return end
+    if menuactive == true then return end
+
+    v.fadeScreen(0xFF00, 16)
+    v.drawString(160, 44, "SONIC FONOKIDS", V_YELLOWMAP, "center")
+    v.drawString(160, 68, "APRENDE, EXPLORA Y JUEGA", 0, "thin-center")
+    v.drawString(160, 100, "ENTER: COMENZAR AVENTURA", V_YELLOWMAP, "thin-center")
+    v.drawString(160, 126, "6 ACTIVIDADES + JUEGO LIBRE", 0, "small-center")
+    v.drawString(160, 144, "REGISTRO ORAL: ADULTO CON TECLAS 1-5", 0, "small-center")
+    v.drawString(160, 170, "DEMO_001 | EDAD SIN REGISTRAR", 0, "small-center")
+end, "game")
+
 local fonoMapaAventura = {
     sectorInicio = 100,
     sectorMeta = 160,
@@ -3892,64 +3943,48 @@ addHook("PlayerThink", function(player)
     -- el acto siguiente normalmente; solo el temporizador ordena volver.
 end)
 
--- Deja libre el HUD nativo de SRB2 (SCORE, TIME y RINGS) en la esquina.
--- La aventura y el premio comparten el mismo origen para no saltar de lugar.
-local fonoHudAventuraX = 8
-local fonoHudAventuraY = 72
-
+-- HUD compacto de aventura y juego libre.
 addHook("HUD", function(v, player)
-    if fonoFlujoSesion.activo ~= true
+    if player == nil or fonoFlujoSesion.activo ~= true
     or gamemap ~= fonoFlujoSesion.mapaEducativo then
         return
     end
 
     local actividad = fonoActividadesAventura[fonoFlujoSesion.indiceActividad]
+    if actividad == nil then return end
 
-    if actividad == nil then
-        return
-    end
-
-    local flags = V_SNAPTOTOP|V_SNAPTOLEFT
-    local estado = "COMPLETA LA ACTIVIDAD"
-
-    if fonoFlujoSesion.fase == "checkpoint_listo" then
-        estado = "BUSCA EL CHECKPOINT"
-    elseif fonoFlujoSesion.fase == "buscando_seccion" then
-        estado = "AVANZA A LA SIGUIENTE ZONA"
-    elseif fonoFlujoSesion.fase == "meta_lista" then
-        estado = "META DESBLOQUEADA"
-    end
-
-    v.drawString(fonoHudAventuraX, fonoHudAventuraY, "SONIC FONOKIDS", flags, "left")
-    v.drawString(fonoHudAventuraX, fonoHudAventuraY + 10,
-        "ETAPA " .. tostring(fonoFlujoSesion.indiceActividad)
+    local flags = V_SNAPTOBOTTOM|V_SNAPTORIGHT
+    local etapa = "ETAPA " .. tostring(fonoFlujoSesion.indiceActividad)
         .. "/" .. tostring(#fonoActividadesAventura)
-        .. ": " .. tostring(actividad.nombreCorto), flags, "left")
-    v.drawString(fonoHudAventuraX, fonoHudAventuraY + 22, estado, flags, "left")
-    v.drawString(fonoHudAventuraX, fonoHudAventuraY + 34,
-        "CHECKPOINTS " .. tostring(fonoFlujoSesion.checkpointActual)
-        .. "/" .. tostring(fonoMapaAventura.checkpointsTotal), flags, "left")
+        .. " | " .. actividad.nombreCorto
+
+    v.drawString(312, 178, etapa, flags, "small-right")
+
+    local estado = ""
+    if fonoFlujoSesion.fase == "checkpoint_listo" then
+        estado = "AVANZA AL CHECKPOINT"
+    elseif fonoFlujoSesion.fase == "buscando_seccion" then
+        estado = "SIGUE A LA PROXIMA SALA"
+    elseif fonoFlujoSesion.fase == "meta_lista" then
+        estado = "META ABIERTA: LLEGA AL FINAL"
+    end
+
+    if estado ~= "" then
+        v.drawString(312, 188, estado, flags, "small-right")
+    end
 end, "game")
 
 addHook("HUD", function(v, player)
-    if fonoFlujoSesion.fase ~= "juego" then
-        return
-    end
+    if player == nil or fonoFlujoSesion.fase ~= "juego" then return end
 
-    local segundosTotales = (fonoFlujoSesion.tiempoJuegoRestante + TICRATE - 1) / TICRATE
-    local minutos = segundosTotales / 60
-    local segundos = segundosTotales % 60
-    local tiempoTexto = string.format("%02d:%02d", minutos, segundos)
-    local flags = V_SNAPTOTOP|V_SNAPTOLEFT
+    local total = (fonoFlujoSesion.tiempoJuegoRestante + TICRATE - 1) / TICRATE
+    local reloj = string.format("%02d:%02d", total / 60, total % 60)
+    local flags = V_SNAPTOTOP|V_SNAPTORIGHT
 
-    v.drawString(fonoHudAventuraX, fonoHudAventuraY, "SONIC FONOKIDS", flags, "left")
-    v.drawString(fonoHudAventuraX, fonoHudAventuraY + 10, "JUEGO LIBRE", flags, "left")
-    v.drawString(fonoHudAventuraX, fonoHudAventuraY + 22,
-        "TIEMPO " .. tiempoTexto, flags, "left")
+    v.drawString(312, 8, "JUEGO LIBRE " .. reloj, flags, "thin-right")
 
     if fonoFlujoSesion.tiempoJuegoRestante <= TICRATE * 30 then
-        v.drawString(fonoHudAventuraX, fonoHudAventuraY + 34,
-            "¡ULTIMOS SEGUNDOS!", flags, "left")
+        v.drawString(312, 20, "QUEDAN 30 SEGUNDOS O MENOS", flags, "small-right")
     end
 end, "game")
 
@@ -3983,6 +4018,21 @@ COM_AddCommand("fonoaventura", function(player, codigo, edad)
     fonoDatosParticipante.codigo = tostring(codigo)
     fonoDatosParticipante.edad = tostring(edad)
     fonoIniciarCicloEducativo(player, false)
+end)
+
+addHook("KeyDown", function(evento)
+    if evento == nil or evento.repeated == true
+    or menuactive == true or not fonoBienvenidaVisible() then
+        return
+    end
+
+    local nombreTecla = string.upper(tostring(evento.name or ""))
+    if nombreTecla ~= "ENTER" and nombreTecla ~= "KEY_ENTER" then return end
+    if consoleplayer == nil then return end
+
+    fonoBienvenidaIniciada = true
+    COM_BufInsertText(consoleplayer, "fonoaventura Demo_001 no_registrada")
+    return true
 end)
 
 COM_AddCommand("fonotiempo", function(player, minutos)

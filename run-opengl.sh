@@ -12,4 +12,5 @@ fi
 
 exec flatpak run org.srb2.SRB2 \
     -opengl \
-    -file "$addon_path"
+    -file "$addon_path" \
+    -warp MAPA0
